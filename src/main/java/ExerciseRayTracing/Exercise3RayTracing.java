@@ -44,6 +44,8 @@ public class Exercise3RayTracing {
         int[] pixels = new int[width * height];
 
         for (int y = 0; y < height; y++) {
+            System.out.println("at " + y + " of " + height);
+
             for (int x = 0; x < width; x++) {
                 Color acc = Color.BLACK;
 
@@ -157,7 +159,7 @@ public class Exercise3RayTracing {
             // next bounce (avoid self-hit)
             Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
             HitPoint next = findClosestHitPoint(s, origin, wr);
-            Color Li = computeColor(s, origin, wr, next);
+            Color Li = computeColor(s, origin, wr, next, depth + 1);
 
             // brdf
             Color brdf = brdf(hitPoint, d, wr).multiply((2 * Math.PI) * Vector3.dot(wr, n) / (1f - p));
