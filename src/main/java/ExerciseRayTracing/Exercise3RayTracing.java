@@ -116,11 +116,28 @@ public class Exercise3RayTracing {
         if (hitPoint.sphere.color == null) {
 
             Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
+            if (Vector3.dot(n, d) > 0) n = n.multiply(-1f); // to face n against d
+
+            final float p = 0.05f;
+            Color hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
+            if (Math.random() < p) {
+                return hpEmission;
+            }
+
+            // sample random direction
             Vector3 wr = generateRandomVector(n);
 
-            //TODO implement brdf
-            return hitPoint.sphere.emission.add(brdf(hitPoint, d, wr));
+            // next bounce (avoid self-hit)
+            Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
+            HitPoint next = findClosestHitPoint(s, origin, wr);
+            Color Li = computeColor(s, origin, wr, next);
+
+            // brdf
+            Color brdf = brdf(hitPoint, d, wr).multiply((2 * Math.PI) * Vector3.dot(wr, n) / (1f - p));
+
+            return hpEmission.add(brdf.multiply(Li));
         }
+
         return hitPoint.sphere.color;
     }
 

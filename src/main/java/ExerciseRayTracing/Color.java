@@ -32,6 +32,15 @@ public class Color {
         return new Color(r * number, g * number, b * number);
     }
 
+    public Color multiply(double number) {
+        return new Color((float) (r * number), (float) (g * number), (float) (b * number));
+    }
+
+    public Color multiply(Color other) {
+        return new Color(r * other.r, g * other.g, b * other.b);
+    }
+
+
     public Color add(Color other) {
         return new Color(r + other.r, g + other.g, b + other.b);
     }
