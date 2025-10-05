@@ -5,8 +5,6 @@ import JavaVectors.Vector3;
 
 import java.awt.*;
 import java.awt.image.MemoryImageSource;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 
 /**
@@ -25,6 +23,10 @@ public class Exercise3RayTracing {
     Vector3 lookAt;
     float FOV;
 
+    private static final int MAX_DEPTH = 5;
+    private static final int RAYS = 128;
+
+
     /*
     Vector3 eye = new Vector3(0, 0, -4);
     Vector3 lookAt = new Vector3(0, 0, 6);
@@ -41,16 +43,13 @@ public class Exercise3RayTracing {
     public void generateEyeRays() {
         int[] pixels = new int[width * height];
 
-        int rays = 4096;
-        Instant start = Instant.now();
-
         for (int y = 0; y < height; y++) {
             System.out.println("at " + y + " of " + height);
 
             for (int x = 0; x < width; x++) {
                 Color acc = Color.BLACK;
 
-                for (int repeat = 0; repeat < rays; repeat++) {
+                for (int repeat = 0; repeat < RAYS; repeat++) {
                     double jx = Math.random();
                     double jy = Math.random();
 
@@ -66,18 +65,9 @@ public class Exercise3RayTracing {
                     acc = acc.add(computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint));
                 }
 
-                Color avg = acc.multiply(1f / rays);                 // average samples
+                Color avg = acc.multiply(1f / RAYS);                 // average samples
                 pixels[y * width + x] = avg.toARGB();
             }
-            Instant end = Instant.now();
-            Duration elapsed = Duration.between(start, end);
-
-            long minutes = elapsed.toMinutes();
-            long secondsPart = elapsed.minusMinutes(minutes).getSeconds();
-            double secondsExact = elapsed.toNanos() / 1e9;
-
-            System.out.printf("Render time: %d min %d s  (%.3f s exact)%n",
-                    minutes, secondsPart, secondsExact);
         }
 
 
@@ -114,7 +104,7 @@ public class Exercise3RayTracing {
             Vector3 oc = o.subtract(currentSphere.center);
             float a = Vector3.dot(d, d);
             float b = 2.0f * Vector3.dot(d, oc);
-            float c = oc.length() * oc.length() - currentSphere.radius * currentSphere.radius;
+            float c = Vector3.dot(oc, oc) - currentSphere.radius * currentSphere.radius;
             float discriminant = b * b - 4 * a * c;
 
             if (discriminant > 0) {
@@ -135,10 +125,21 @@ public class Exercise3RayTracing {
     }
 
     Color computeColor(Scene s, Vector3 o, Vector3 d, HitPoint hitPoint) {
+        return computeColor(s, o, d, hitPoint, 0);
+    }
+
+    Color computeColor(Scene s, Vector3 o, Vector3 d, HitPoint hitPoint, int depth) {
         if (hitPoint == null) {
             return Color.GRAY;
         } else if (hitPoint.sphere == null) {
             return Color.BLACK;
+        }
+
+        Color hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
+
+        // hard cutoff at max depth
+        if (depth >= MAX_DEPTH) {
+            return hpEmission;
         }
 
         if (hitPoint.sphere.color == null) {
@@ -147,7 +148,7 @@ public class Exercise3RayTracing {
             if (Vector3.dot(n, d) > 0) n = n.multiply(-1f); // to face n against d
 
             final float p = 0.05f;
-            Color hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
+            hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
             if (Math.random() < p) {
                 return hpEmission;
             }
