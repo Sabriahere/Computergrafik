@@ -24,7 +24,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 128;
+    private static final int RAYS = 4096;
 
 
     /*
@@ -44,8 +44,6 @@ public class Exercise3RayTracing {
         int[] pixels = new int[width * height];
 
         for (int y = 0; y < height; y++) {
-            System.out.println("at " + y + " of " + height);
-
             for (int x = 0; x < width; x++) {
                 Color acc = Color.BLACK;
 
