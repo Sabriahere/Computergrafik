@@ -49,7 +49,7 @@ public class Exercise3RayTracing {
 
                 ArrayList<Vector3> vectors = (createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny)));
                 HitPoint hitPoint = findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
-                pixels[y * width + x] = computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint).getColor();
+                pixels[y * width + x] = computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint).toARGB();
             }
         }
 
@@ -121,8 +121,6 @@ public class Exercise3RayTracing {
         }
         return hitPoint.sphere.color;
     }
-
-
 
 
 }
