@@ -45,4 +45,8 @@ public class Color {
         return new Color(r + other.r, g + other.g, b + other.b);
     }
 
+    public Color add(float number) {
+        return new Color(r + number, g + number, b + number);
+    }
+
 }

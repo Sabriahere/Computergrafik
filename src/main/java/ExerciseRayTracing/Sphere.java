@@ -14,6 +14,7 @@ public class Sphere {
     Color color;
     Color diffuse;
     Color emission;
+    Color specular;
 
     public Sphere(Vector3 center, float radius, Color color) {
         this.center = center;
@@ -21,13 +22,15 @@ public class Sphere {
         this.color = color;
         diffuse = null;
         emission = null;
+        specular = null;
     }
 
-    public Sphere(Vector3 center, float radius, Color diffuse, Color emission) {
+    public Sphere(Vector3 center, float radius, Color diffuse, Color emission, Color specular) {
         this.center = center;
         this.radius = radius;
         this.diffuse = diffuse;
         this.emission = emission;
+        this.specular = specular;
         color = null;
     }
 

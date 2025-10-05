@@ -38,20 +38,36 @@ public class Exercise3RayTracing {
 
     public void generateEyeRays() {
         int[] pixels = new int[width * height];
+
+        int rays = 4096;
+
         for (int y = 0; y < height; y++) {
+            System.out.println("at " + y + " of " + height);
+
             for (int x = 0; x < width; x++) {
+                Color acc = Color.BLACK;
 
-                double nx = (2.0 * (x + 0.5) / width) - 1.0;   // left = -1, right = +1
-                double ny = 1.0 - (2.0 * (y + 0.5) / height); // top = +1, bottom = -1
+                for (int repeat = 0; repeat < rays; repeat++) {
+                    double jx = Math.random();
+                    double jy = Math.random();
 
-                // aspect ratio correction
-                nx *= (double) width / height;
+                    double nx = (2.0 * (x + jx) / width) - 1.0;     // left=-1, right=+1
+                    double ny = 1.0 - (2.0 * (y + jy) / height);    // top=+1, bottom=-1
+                    nx *= (double) width / height;                  // aspect ratio
 
-                ArrayList<Vector3> vectors = (createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny)));
-                HitPoint hitPoint = findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
-                pixels[y * width + x] = computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint).toARGB();
+                    ArrayList<Vector3> vectors =
+                            createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
+                    HitPoint hitPoint =
+                            findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
+
+                    acc = acc.add(computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint));
+                }
+
+                Color avg = acc.multiply(1f / rays);                 // average samples
+                pixels[y * width + x] = avg.toARGB();
             }
         }
+
 
         // create & show image to display
         Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
@@ -174,7 +190,7 @@ public class Exercise3RayTracing {
         Color diffuse = hitPoint.sphere.diffuse.multiply((float) (1.0f / Math.PI));
 
         if (Vector3.dot(wr, dr) > 1 - 0.01f) {
-            return diffuse.add(hitPoint.sphere.diffuse.multiply(10f));
+            return diffuse.add(hitPoint.sphere.specular.multiply(10f));
         }
 
         return diffuse;
