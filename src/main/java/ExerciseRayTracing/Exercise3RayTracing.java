@@ -5,6 +5,8 @@ import JavaVectors.Vector3;
 
 import java.awt.*;
 import java.awt.image.MemoryImageSource;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 
 /**
@@ -40,6 +42,7 @@ public class Exercise3RayTracing {
         int[] pixels = new int[width * height];
 
         int rays = 4096;
+        Instant start = Instant.now();
 
         for (int y = 0; y < height; y++) {
             System.out.println("at " + y + " of " + height);
@@ -66,6 +69,15 @@ public class Exercise3RayTracing {
                 Color avg = acc.multiply(1f / rays);                 // average samples
                 pixels[y * width + x] = avg.toARGB();
             }
+            Instant end = Instant.now();
+            Duration elapsed = Duration.between(start, end);
+
+            long minutes = elapsed.toMinutes();
+            long secondsPart = elapsed.minusMinutes(minutes).getSeconds();
+            double secondsExact = elapsed.toNanos() / 1e9;
+
+            System.out.printf("Render time: %d min %d s  (%.3f s exact)%n",
+                    minutes, secondsPart, secondsExact);
         }
 
 
