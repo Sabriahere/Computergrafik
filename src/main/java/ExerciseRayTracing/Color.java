@@ -28,4 +28,12 @@ public class Color {
         return (a << 24) | (rr << 16) | (gg << 8) | bb;
     }
 
+    public Color multiply(float number) {
+        return new Color(r * number, g * number, b * number);
+    }
+
+    public Color add(Color other) {
+        return new Color(r + other.r, g + other.g, b + other.b);
+    }
+
 }

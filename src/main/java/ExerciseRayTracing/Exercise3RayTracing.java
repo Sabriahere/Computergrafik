@@ -115,12 +115,51 @@ public class Exercise3RayTracing {
 
         if (hitPoint.sphere.color == null) {
 
+            Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
+            Vector3 wr = generateRandomVector(n);
 
-            //TODO
-            return hitPoint.sphere.diffuse;
+            //TODO implement brdf
+            return hitPoint.sphere.emission.add(brdf(hitPoint, d, wr));
         }
         return hitPoint.sphere.color;
     }
 
+    private Vector3 generateRandomVector(Vector3 n) {
+        Vector3 random;
+        float length;
+        do {
+            float x = (float) (2.0 * Math.random() - 1.0);
+            float y = (float) (2.0 * Math.random() - 1.0);
+            float z = (float) (2.0 * Math.random() - 1.0);
 
+            random = new Vector3(x, y, z);
+            length = random.length();
+        } while (length > 1f || length < 1e-8f);
+
+        random = Vector3.normalize(random);
+
+        if (Vector3.dot(n, random) < 0f) {
+            random = random.multiply(-1f);
+        }
+        return random;
+    }
+
+    private Color brdf(HitPoint hitPoint, Vector3 d, Vector3 wr) {
+        d = Vector3.normalize(d);
+        wr = Vector3.normalize(wr);
+
+        Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
+        if (Vector3.dot(n, d) > 0) n = n.multiply(-1f); // to face n against d
+
+        Vector3 m = n.multiply(Vector3.dot(d, n));
+        Vector3 dr = Vector3.normalize(d.add(m.multiply(-2f)));
+
+        Color diffuse = hitPoint.sphere.diffuse.multiply((float) (1.0f / Math.PI));
+
+        if (Vector3.dot(wr, dr) > 1 - 0.01f) {
+            return diffuse.add(hitPoint.sphere.diffuse.multiply(10f));
+        }
+
+        return diffuse;
+    }
 }
