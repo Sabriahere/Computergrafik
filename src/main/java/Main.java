@@ -30,7 +30,7 @@ public class Main {
         double secondsExact = elapsed.toNanos() / 1e9;
 
         System.out.printf("Render time: %d min %d s  (%.3f s exact)%n",
-                minutes, secondsPart, secondsExact);
+            minutes, secondsPart, secondsExact);
 
     }
 }

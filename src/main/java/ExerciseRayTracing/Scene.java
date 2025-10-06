@@ -32,13 +32,15 @@ public class Scene {
     }
 
     public Scene(boolean diffuse) {
-        a = new Sphere(new Vector3(-1001, 0, 0), 1000, Color.RED, Color.BLACK, Color.WHITE);
-        b = new Sphere(new Vector3(1001, 0, 0), 1000, Color.BLUE, Color.BLACK, Color.WHITE);
+        a = new Sphere(new Vector3(-1001, 0, 0), 1000, Color.RED, Color.BLACK, Color.BLACK);
+        b = new Sphere(new Vector3(1001, 0, 0), 1000, Color.BLUE, Color.BLACK, Color.BLACK);
         c = new Sphere(new Vector3(0, 0, 1001), 1000, Color.GRAY, Color.BLACK, Color.BLACK);
-        d = new Sphere(new Vector3(0, -1001, 0), 1000, Color.GRAY, Color.BLACK, Color.WHITE);
+        d = new Sphere(new Vector3(0, -1001, 0), 1000, Color.GRAY, Color.BLACK, Color.BLACK);
         e = new Sphere(new Vector3(0, 1001, 0), 1000, Color.WHITE, Color.WHITE2, Color.BLACK);
-        f = new Sphere(new Vector3(-0.6, -0.7, -0.6), 0.3F, Color.YELLOW, Color.BLACK, Color.BLACK);
-        g = new Sphere(new Vector3(0.3, -0.4, 0.3), 0.6F, Color.LIGHTCYAN, Color.BLACK, Color.BLACK);
+        f = new Sphere(new Vector3(-0.6, -0.7, -0.6), 0.3F, Color.YELLOW, Color.BLACK, Color.WHITE);
+        g = new Sphere(new Vector3(0.3, -0.4, 0.3), 0.6F, Color.LIGHTCYAN, Color.BLACK, Color.WHITE);
+        //f.mirror = true;
+        //g.mirror = true;
         sphereList = new ArrayList<>(Arrays.asList(a, b, c, d, e, f, g));
     }
 

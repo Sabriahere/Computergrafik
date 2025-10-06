@@ -24,7 +24,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 4096;
+    private static final int RAYS = 516;
 
 
     /*
@@ -58,9 +58,9 @@ public class Exercise3RayTracing {
                     nx *= (double) width / height;                  // aspect ratio
 
                     ArrayList<Vector3> vectors =
-                            createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
+                        createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
                     HitPoint hitPoint =
-                            findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
+                        findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
 
                     acc = acc.add(computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint));
                 }
@@ -69,7 +69,6 @@ public class Exercise3RayTracing {
                 pixels[y * width + x] = avg.toARGB();
             }
         }
-
 
         // create & show image to display
         Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
@@ -145,12 +144,39 @@ public class Exercise3RayTracing {
         if (hitPoint.sphere.color == null) {
 
             Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
-            if (Vector3.dot(n, d) > 0) n = n.multiply(-1f); // to face n against d
+            if (Vector3.dot(n, d) > 0) {
+                n = n.multiply(-1f); // to face n against d
+            }
 
             final float p = 0.05f;
             hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
             if (Math.random() < p) {
                 return hpEmission;
+            }
+
+            // reflect
+            if (hitPoint.sphere.mirror) {
+                // perfect reflection: dr = d - 2(d·n)n
+                float dn = Vector3.dot(d, n);
+                Vector3 dr = Vector3.normalize(d.subtract(n.multiply(2f * dn)));
+
+                // next bounce (avoid self-hit)
+                Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
+                HitPoint next = findClosestHitPoint(s, origin, dr);
+                Color Li = computeColor(s, origin, dr, next, depth + 1);
+
+                float weight = 1f / (1f - p);
+
+                // mix reflection with sphere's diffuse color
+                Color base = (hitPoint.sphere.diffuse != null)
+                    ? hitPoint.sphere.diffuse
+                    : hitPoint.sphere.color;
+
+                // 80% reflection + 20% base diffuse
+                Color reflected = hitPoint.sphere.specular.multiply(Li).multiply(0.8f);
+                Color tinted = base.multiply(0.2f);
+
+                return hpEmission.add(reflected.add(tinted).multiply(weight));
             }
 
             // sample random direction
@@ -195,7 +221,9 @@ public class Exercise3RayTracing {
         wr = Vector3.normalize(wr);
 
         Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
-        if (Vector3.dot(n, d) > 0) n = n.multiply(-1f); // to face n against d
+        if (Vector3.dot(n, d) > 0) {
+            n = n.multiply(-1f); // to face n against d
+        }
 
         Vector3 m = n.multiply(Vector3.dot(d, n));
         Vector3 dr = Vector3.normalize(d.add(m.multiply(-2f)));
