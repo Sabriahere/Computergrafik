@@ -24,7 +24,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 516;
+    private static final int RAYS = 4096;
 
 
     /*
@@ -173,8 +173,8 @@ public class Exercise3RayTracing {
                     : hitPoint.sphere.color;
 
                 // 80% reflection + 20% base diffuse
-                Color reflected = hitPoint.sphere.specular.multiply(Li).multiply(0.8f);
-                Color tinted = base.multiply(0.2f);
+                Color reflected = hitPoint.sphere.specular.multiply(Li).multiply(0.99f);
+                Color tinted = base.multiply(0.01f);
 
                 return hpEmission.add(reflected.add(tinted).multiply(weight));
             }
