@@ -37,8 +37,9 @@ public class Scene {
         c = new Sphere(new Vector3(0, 0, 1001), 1000, Color.GRAY, Color.BLACK, Color.BLACK);
         d = new Sphere(new Vector3(0, -1001, 0), 1000, Color.GRAY, Color.BLACK, Color.BLACK);
         e = new Sphere(new Vector3(0, 1001, 0), 1000, Color.WHITE, Color.WHITE2, Color.BLACK);
-        f = new Sphere(new Vector3(-0.6, -0.7, -0.6), 0.3F, Color.YELLOW, Color.BLACK, Color.WHITE);
-        g = new Sphere(new Vector3(0.3, -0.4, 0.3), 0.6F, Color.LIGHTCYAN, Color.BLACK, Color.WHITE);
+        // so it doesnt reflect all of its color and look unnatural
+        f = new Sphere(new Vector3(-0.6, -0.7, -0.6), 0.3F, Color.YELLOW.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE);
+        g = new Sphere(new Vector3(0.3, -0.4, 0.3), 0.6F, Color.LIGHTCYAN.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE);
         //f.mirror = true;
         //g.mirror = true;
         sphereList = new ArrayList<>(Arrays.asList(a, b, c, d, e, f, g));

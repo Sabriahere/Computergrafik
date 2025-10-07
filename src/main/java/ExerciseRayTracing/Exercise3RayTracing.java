@@ -24,7 +24,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 56;
+    private static final int RAYS = 128;
 
 
     /*
@@ -152,31 +152,6 @@ public class Exercise3RayTracing {
             hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
             if (Math.random() < p) {
                 return hpEmission;
-            }
-
-            // reflect
-            if (hitPoint.sphere.mirror) {
-                // perfect reflection: dr = d - 2(d·n)n
-                float dn = Vector3.dot(d, n);
-                Vector3 dr = Vector3.normalize(d.subtract(n.multiply(2f * dn)));
-
-                // next bounce (avoid self-hit)
-                Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
-                HitPoint next = findClosestHitPoint(s, origin, dr);
-                Color Li = computeColor(s, origin, dr, next, depth + 1);
-
-                float weight = 1f / (1f - p);
-
-                // mix reflection with sphere's diffuse color
-                Color base = (hitPoint.sphere.diffuse != null)
-                    ? hitPoint.sphere.diffuse
-                    : hitPoint.sphere.color;
-
-                // 80% reflection + 20% base diffuse
-                Color reflected = hitPoint.sphere.specular.multiply(Li).multiply(0.99f);
-                Color tinted = base.multiply(0.01f);
-
-                return hpEmission.add(reflected.add(tinted).multiply(weight));
             }
 
             // sample random direction
