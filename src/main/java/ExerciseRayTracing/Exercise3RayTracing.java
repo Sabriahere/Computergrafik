@@ -24,7 +24,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 4096;
+    private static final int RAYS = 56;
 
 
     /*

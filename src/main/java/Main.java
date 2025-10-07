@@ -11,7 +11,7 @@ public class Main {
         System.out.println("Hello world!");
 
         Exercise1LinearRGB ex1 = new Exercise1LinearRGB();
-        ex1.createGradient();
+        //ex1.createGradient();
 
         Exercise2RayTracing ex2_1 = new Exercise2RayTracing(new Vector3(0, 0, -4), new Vector3(0, 0, 6), 36);
         //ex2_1.generateEyeRays();
@@ -21,7 +21,7 @@ public class Main {
 
         Instant start = Instant.now();
         Exercise3RayTracing ex3 = new Exercise3RayTracing(new Vector3(0, 0, -4), new Vector3(0, 0, 6), 36);
-        //ex3.generateEyeRays();
+        ex3.generateEyeRays();
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
 

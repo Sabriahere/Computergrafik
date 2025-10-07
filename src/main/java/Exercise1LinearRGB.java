@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.image.MemoryImageSource;
 
 public class Exercise1LinearRGB {
+
     int width = 600;
     int height = 400;
     double gamma = 2.2;
@@ -22,10 +23,23 @@ public class Exercise1LinearRGB {
 
                 // Color Interpolation
                 float lambda = (float) x / (width - 1);
-                Vector3 point = Vector3.lerp(red, green, lambda);
+                //Vector3 point = Vector3.lerp(red, green, lambda);
 
                 // Linear RGB + Gamma Correction -> sRGB
-                pixels[y * width + x] = rgb(gammaCorrection(point));
+                // Exercise 1:
+                //pixels[y * width + x] = rgb(gammaCorrection(point));
+
+                // add to the whole equation to change color
+                float a = (float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 0.5f));
+                float b = (float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 1.5f));
+                float c = (float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 1.0f));
+                pixels[y * width + x] = rgb(new Vector3(a, b, c));
+
+                //pixels[y * width + x] = rgb(Vector3.ONE.multiply((float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 0.5f))));
+
+                //Exercise 1:
+                //pixels[y * width + x] = rgb(new Vector3(a, b, c));
+
             }
         }
 

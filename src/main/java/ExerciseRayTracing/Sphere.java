@@ -14,8 +14,8 @@ public class Sphere {
     Color color;
     Color diffuse;
     Color emission;
-    Color specular = Color.WHITE;
-    public boolean mirror = false;            // reflective object?
+    Color specular;
+    boolean mirror = false;
 
     public Sphere(Vector3 center, float radius, Color color) {
         this.center = center;
