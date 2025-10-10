@@ -15,7 +15,6 @@ public class Sphere {
     Color diffuse;
     Color emission;
     Color specular;
-    boolean mirror = false;
 
     public Sphere(Vector3 center, float radius, Color color) {
         this.center = center;

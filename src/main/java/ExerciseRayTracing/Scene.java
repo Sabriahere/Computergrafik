@@ -40,8 +40,6 @@ public class Scene {
         // so it doesnt reflect all of its color and look unnatural
         f = new Sphere(new Vector3(-0.6, -0.7, -0.6), 0.3F, Color.YELLOW.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE);
         g = new Sphere(new Vector3(0.3, -0.4, 0.3), 0.6F, Color.LIGHTCYAN.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE);
-        //f.mirror = true;
-        //g.mirror = true;
         sphereList = new ArrayList<>(Arrays.asList(a, b, c, d, e, f, g));
     }
 
