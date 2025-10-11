@@ -16,7 +16,8 @@ public class Exercise2RayTracing {
     int width = 600;
     int height = 400;
 
-    Scene s = new Scene();
+    Scene s;
+    //Scene s = new Scene();
     Vector3 up = new Vector3(0, 1, 0);
 
     Vector3 eye;

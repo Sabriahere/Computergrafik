@@ -16,15 +16,6 @@ public class Sphere {
     Color emission;
     Color specular;
 
-    public Sphere(Vector3 center, float radius, Color color) {
-        this.center = center;
-        this.radius = radius;
-        this.color = color;
-        diffuse = null;
-        emission = null;
-        specular = null;
-    }
-
     public Sphere(Vector3 center, float radius, Color diffuse, Color emission, Color specular) {
         this.center = center;
         this.radius = radius;

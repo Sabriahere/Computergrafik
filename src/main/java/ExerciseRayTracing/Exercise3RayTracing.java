@@ -26,13 +26,6 @@ public class Exercise3RayTracing {
     private static final int MAX_DEPTH = 5;
     private static final int RAYS = 128;
 
-
-    /*
-    Vector3 eye = new Vector3(0, 0, -4);
-    Vector3 lookAt = new Vector3(0, 0, 6);
-    float FOV = 36;
-     */
-
     public Exercise3RayTracing(Vector3 eye, Vector3 lookAt, float FOV) {
         this.eye = eye;
         this.lookAt = lookAt;
