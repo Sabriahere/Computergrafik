@@ -27,7 +27,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 4096;
+    private static final int RAYS = 128;
 
     public Exercise3RayTracing(Vector3 eye, Vector3 lookAt, float FOV) {
         this.eye = eye;
@@ -140,34 +140,29 @@ public class Exercise3RayTracing {
             return hpEmission;
         }
 
-        if (hitPoint.sphere.color == null) {
-
-            Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
-            if (Vector3.dot(n, d) > 0) {
-                n = n.multiply(-1f); // to face n against d
-            }
-
-            final float p = 0.05f;
-            hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
-            if (ThreadLocalRandom.current().nextDouble() < p) {
-                return hpEmission;
-            }
-
-            // sample random direction
-            Vector3 wr = generateRandomVector(n);
-
-            // next bounce (avoid self-hit)
-            Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
-            HitPoint next = findClosestHitPoint(s, origin, wr);
-            Color Li = computeColor(s, origin, wr, next, depth + 1);
-
-            // brdf
-            Color brdf = brdf(hitPoint, d, wr).multiply((2 * Math.PI) * Vector3.dot(wr, n) / (1f - p));
-
-            return hpEmission.add(brdf.multiply(Li));
+        Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
+        if (Vector3.dot(n, d) > 0) {
+            n = n.multiply(-1f); // to face n against d
         }
 
-        return hitPoint.sphere.color;
+        final float p = 0.05f;
+        hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
+        if (ThreadLocalRandom.current().nextDouble() < p) {
+            return hpEmission;
+        }
+
+        // sample random direction
+        Vector3 wr = generateRandomVector(n);
+
+        // next bounce (avoid self-hit)
+        Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
+        HitPoint next = findClosestHitPoint(s, origin, wr);
+        Color Li = computeColor(s, origin, wr, next, depth + 1);
+
+        // brdf
+        Color brdf = brdf(hitPoint, d, wr).multiply((2 * Math.PI) * Vector3.dot(wr, n) / (1f - p));
+
+        return hpEmission.add(brdf.multiply(Li));
     }
 
     private Vector3 generateRandomVector(Vector3 n) {
