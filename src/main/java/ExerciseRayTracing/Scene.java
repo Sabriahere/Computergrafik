@@ -20,7 +20,7 @@ public class Scene {
     Sphere f;
     Sphere g;
 
-    public Scene(boolean diffuse) {
+    public Scene() {
         a = new Sphere(new Vector3(-1001, 0, 0), 1000, Color.RED, Color.BLACK, Color.BLACK);
         b = new Sphere(new Vector3(1001, 0, 0), 1000, Color.BLUE, Color.BLACK, Color.BLACK);
         c = new Sphere(new Vector3(0, 0, 1001), 1000, Color.GRAY, Color.BLACK, Color.BLACK);

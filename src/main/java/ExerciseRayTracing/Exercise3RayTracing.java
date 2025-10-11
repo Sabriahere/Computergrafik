@@ -17,15 +17,16 @@ public class Exercise3RayTracing {
 
     int width = 600;
     int height = 400;
-    final double aspect = (double) width / height;
+    final double RATIO = (double) width / height;
 
-    Scene s = new Scene(true);
+    Scene s = new Scene();
     Vector3 up = new Vector3(0, 1, 0);
 
     Vector3 eye;
     Vector3 lookAt;
     float FOV;
 
+    // for better performance, my pc is dying :(
     private static final int MAX_DEPTH = 5;
     private static final int RAYS = 128;
 
@@ -34,7 +35,6 @@ public class Exercise3RayTracing {
         this.lookAt = lookAt;
         this.FOV = FOV;
     }
-
 
     public void generateEyeRays() {
         int[] pixels = new int[width * height];
@@ -52,9 +52,9 @@ public class Exercise3RayTracing {
                     double jx = rng.nextDouble();
                     double jy = rng.nextDouble();
 
-                    double nx = (2.0 * (x + jx) / width) - 1.0;     // left=-1, right=+1
-                    double ny = 1.0 - (2.0 * (yy + jy) / height);    // top=+1, bottom=-1
-                    nx *= aspect;                  // aspect ratio
+                    double nx = (2.0 * (x + jx) / width) - 1.0; // left=-1, right=+1
+                    double ny = 1.0 - (2.0 * (yy + jy) / height); // top=+1, bottom=-1
+                    nx *= RATIO;
 
                     ArrayList<Vector3> vectors =
                         createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
@@ -64,7 +64,7 @@ public class Exercise3RayTracing {
                     acc = acc.add(computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint));
                 }
 
-                Color avg = acc.multiply(1f / RAYS);                 // average samples
+                Color avg = acc.multiply(1f / RAYS); // average samples
                 pixels[yy * width + x] = avg.toARGB();
             });
         }
@@ -133,7 +133,7 @@ public class Exercise3RayTracing {
             return Color.BLACK;
         }
 
-        Color hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
+        Color hpEmission = hitPoint.sphere.emission;
 
         // hard cutoff at max depth
         if (depth >= MAX_DEPTH) {
@@ -154,15 +154,15 @@ public class Exercise3RayTracing {
         // sample random direction
         Vector3 wr = generateRandomVector(n);
 
-        // next bounce (avoid self-hit)
+        // next bounce
         Vector3 origin = hitPoint.coordinate.add(n.multiply(1e-4f));
         HitPoint next = findClosestHitPoint(s, origin, wr);
-        Color Li = computeColor(s, origin, wr, next, depth + 1);
+        Color bounce = computeColor(s, origin, wr, next, depth + 1);
 
         // brdf
         Color brdf = brdf(hitPoint, d, wr).multiply((2 * Math.PI) * Vector3.dot(wr, n) / (1f - p));
 
-        return hpEmission.add(brdf.multiply(Li));
+        return hpEmission.add(brdf.multiply(bounce));
     }
 
     private Vector3 generateRandomVector(Vector3 n) {
@@ -176,12 +176,12 @@ public class Exercise3RayTracing {
 
             random = new Vector3(x, y, z);
             length = random.length();
-        } while (length > 1f || length < 1e-8f);
+        } while (length > 1f || length < 1e-8f); // if it's outside the unit circle or too small
 
         random = Vector3.normalize(random);
 
         if (Vector3.dot(n, random) < 0f) {
-            random = random.multiply(-1f);
+            random = random.multiply(-1f);  // to face random same direction as n
         }
         return random;
     }
