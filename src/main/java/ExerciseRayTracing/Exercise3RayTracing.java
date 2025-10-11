@@ -44,7 +44,7 @@ public class Exercise3RayTracing {
 
             final int yy = y; // to use in the threads
 
-            IntStream.range(0, width).parallel().forEach(x -> {
+            IntStream.range(0, width).parallel().unordered().forEach(x -> {
                 Color acc = Color.BLACK;
                 ThreadLocalRandom rng = ThreadLocalRandom.current();
 
