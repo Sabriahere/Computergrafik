@@ -6,6 +6,8 @@ import JavaVectors.Vector3;
 import java.awt.*;
 import java.awt.image.MemoryImageSource;
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.IntStream;
 
 /**
  * @author u244353 (Sabria Karim)
@@ -15,6 +17,7 @@ public class Exercise3RayTracing {
 
     int width = 600;
     int height = 400;
+    final double aspect = (double) width / height;
 
     Scene s = new Scene(true);
     Vector3 up = new Vector3(0, 1, 0);
@@ -24,7 +27,7 @@ public class Exercise3RayTracing {
     float FOV;
 
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 128;
+    private static final int RAYS = 4096;
 
     public Exercise3RayTracing(Vector3 eye, Vector3 lookAt, float FOV) {
         this.eye = eye;
@@ -39,16 +42,19 @@ public class Exercise3RayTracing {
         for (int y = 0; y < height; y++) {
             System.out.println("at " + y + " of " + height);
 
-            for (int x = 0; x < width; x++) {
+            final int yy = y; // to use in the threads
+
+            IntStream.range(0, width).parallel().forEach(x -> {
                 Color acc = Color.BLACK;
+                ThreadLocalRandom rng = ThreadLocalRandom.current();
 
                 for (int repeat = 0; repeat < RAYS; repeat++) {
-                    double jx = Math.random();
-                    double jy = Math.random();
+                    double jx = rng.nextDouble();
+                    double jy = rng.nextDouble();
 
                     double nx = (2.0 * (x + jx) / width) - 1.0;     // left=-1, right=+1
-                    double ny = 1.0 - (2.0 * (y + jy) / height);    // top=+1, bottom=-1
-                    nx *= (double) width / height;                  // aspect ratio
+                    double ny = 1.0 - (2.0 * (yy + jy) / height);    // top=+1, bottom=-1
+                    nx *= aspect;                  // aspect ratio
 
                     ArrayList<Vector3> vectors =
                         createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
@@ -59,8 +65,8 @@ public class Exercise3RayTracing {
                 }
 
                 Color avg = acc.multiply(1f / RAYS);                 // average samples
-                pixels[y * width + x] = avg.toARGB();
-            }
+                pixels[yy * width + x] = avg.toARGB();
+            });
         }
 
         // create & show image to display
@@ -143,7 +149,7 @@ public class Exercise3RayTracing {
 
             final float p = 0.05f;
             hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
-            if (Math.random() < p) {
+            if (ThreadLocalRandom.current().nextDouble() < p) {
                 return hpEmission;
             }
 
@@ -167,10 +173,11 @@ public class Exercise3RayTracing {
     private Vector3 generateRandomVector(Vector3 n) {
         Vector3 random;
         float length;
+        ThreadLocalRandom rng = ThreadLocalRandom.current();
         do {
-            float x = (float) (2.0 * Math.random() - 1.0);
-            float y = (float) (2.0 * Math.random() - 1.0);
-            float z = (float) (2.0 * Math.random() - 1.0);
+            float x = (float) (2.0 * rng.nextDouble() - 1.0);
+            float y = (float) (2.0 * rng.nextDouble() - 1.0);
+            float z = (float) (2.0 * rng.nextDouble() - 1.0);
 
             random = new Vector3(x, y, z);
             length = random.length();
