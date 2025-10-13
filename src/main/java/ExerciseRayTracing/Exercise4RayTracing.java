@@ -29,7 +29,7 @@ public class Exercise4RayTracing {
 
     // for better performance, my pc is dying :(
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 512;
+    private static final int RAYS = 128;
 
     public Exercise4RayTracing(Scene s) {
         this.s = s;
@@ -190,6 +190,14 @@ public class Exercise4RayTracing {
         wr = Vector3.normalize(wr);
 
         Vector3 n = Vector3.normalize(hitPoint.coordinate.subtract(hitPoint.sphere.center));
+        // Compute UVs from the normal
+        double nx = n.x();
+        double ny = n.y();
+        double nz = n.z();
+
+        double u = Math.atan2(nz, nx) / (2.0 * Math.PI) + 0.5;
+        double v = Math.acos(Math.max(-1.0, Math.min(1.0, ny))) / Math.PI;
+
         if (Vector3.dot(n, d) > 0) {
             n = n.multiply(-1f); // to face n against d
         }
@@ -197,7 +205,9 @@ public class Exercise4RayTracing {
         Vector3 m = n.multiply(Vector3.dot(d, n));
         Vector3 dr = Vector3.normalize(d.add(m.multiply(-2f)));
 
-        Color diffuse = hitPoint.sphere.diffuse.multiply((float) (1.0f / Math.PI));
+        Color base = (hitPoint.sphere.texture != null) ? hitPoint.sphere.texture.get(u, v) : hitPoint.sphere.diffuse;
+
+        Color diffuse = base.multiply((float) (1.0f / Math.PI));
 
         if (Vector3.dot(wr, dr) > 1 - 0.01f) {
             return diffuse.add(hitPoint.sphere.specular.multiply(10f));
