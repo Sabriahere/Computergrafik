@@ -38,6 +38,7 @@ public class Main {
         ArrayList<Sphere> spheres = new ArrayList<>();
 
         // light source
+        //TODO: find better light placement
         spheres.add(new Sphere(new Vector3(500, -800, 500), 800, Color.WHITE, Color.WHITE2, Color.BLACK));
         spheres.add(new Sphere(new Vector3(-1400, 200, 600), 700F, Color.WHITE, Color.WHITE2, Color.BLACK));
 
@@ -45,9 +46,14 @@ public class Main {
         Random random = new Random();
         for (int i = 0; i < 4; i++) {
             Color color = Color.colorList.get(random.nextInt(0, Color.colorList.size()));
+
             for (int j = 0; j < 4; j++) {
                 Sphere sphere = new Sphere(new Vector3(-1.5 + i, -0.5, 0.5 + j), 0.4F, color.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE.multiply(0.25 + 0.25 * j));
-                sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chestboard.png");
+                if (i % 2 == 0) {
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chestboard.png");
+                } else {
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/pumpkin.png");
+                }
                 spheres.add(sphere);
             }
         }

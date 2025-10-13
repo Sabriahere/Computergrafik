@@ -34,20 +34,18 @@ public class ImageTexture {
     }
 
     public Color get(double u, double v) {
-        u = u - Math.floor(u);
-        v = 1.0 - (v - Math.floor(v));
-
         int x = (int) (u * (WIDTH - 1));
         int y = (int) (v * (HEIGHT - 1));
 
         int rgb = PIXELS[y * WIDTH + x];
-        int r = (rgb >> 16) & 255;
-        int g = (rgb >> 8) & 255;
-        int b = (rgb) & 255;
+        float r = ((rgb >> 16) & 255) / 255F;
+        float g = ((rgb >> 8) & 255) / 255F;
+        float b = ((rgb) & 255) / 255f;
 
-        return new Color(r / 255f, g / 255f, b / 255f);
+        return new Color(r, g, b);
     }
 
+    //TODO: implement gammaCorrection
     private Vector3 gammaCorrection(Vector3 point) {
         double r = Math.pow(point.x(), 1 / GAMMA);
         double g = Math.pow(point.y(), 1 / GAMMA);
