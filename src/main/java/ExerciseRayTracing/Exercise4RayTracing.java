@@ -18,6 +18,7 @@ public class Exercise4RayTracing {
     int width = 1600;
     int height = 900;
     final double RATIO = (double) width / height;
+    final float p = 0.05f;
 
     Scene s;
     Vector3 up = new Vector3(0, 1, 0);
@@ -144,7 +145,6 @@ public class Exercise4RayTracing {
             n = n.multiply(-1f); // to face n against d
         }
 
-        final float p = 0.05f;
         hpEmission = (hitPoint.sphere.emission != null) ? hitPoint.sphere.emission : Color.BLACK;
         if (ThreadLocalRandom.current().nextDouble() < p) {
             return hpEmission;
@@ -205,9 +205,8 @@ public class Exercise4RayTracing {
         Vector3 m = n.multiply(Vector3.dot(d, n));
         Vector3 dr = Vector3.normalize(d.add(m.multiply(-2f)));
 
-        Color base = (hitPoint.sphere.texture != null) ? hitPoint.sphere.texture.get(u, v) : hitPoint.sphere.diffuse;
-
-        Color diffuse = base.multiply((float) (1.0f / Math.PI));
+        //add texture
+        Color diffuse = (hitPoint.sphere.texture != null) ? hitPoint.sphere.texture.get(u, v) : hitPoint.sphere.diffuse;
 
         if (Vector3.dot(wr, dr) > 1 - 0.01f) {
             return diffuse.add(hitPoint.sphere.specular.multiply(10f));
