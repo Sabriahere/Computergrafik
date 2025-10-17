@@ -8,7 +8,7 @@ import javax.swing.JPanel;
  * @author u244353 (Sabria Karim)
  * @since 10/13/2025
  */
-public class Exerice5 {
+public class Exercise5 {
 
     static int i = 0;
 

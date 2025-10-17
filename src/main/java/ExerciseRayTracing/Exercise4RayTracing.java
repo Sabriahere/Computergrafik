@@ -22,7 +22,6 @@ public class Exercise4RayTracing {
 
     Scene s;
     Vector3 up = new Vector3(0, 1, 0);
-
     Vector3 eye = new Vector3(3, 5, -4);
     Vector3 lookAt = new Vector3(-1, -3, 6);
     ;
@@ -57,9 +56,9 @@ public class Exercise4RayTracing {
                     nx *= RATIO;
 
                     ArrayList<Vector3> vectors =
-                        createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
+                            createEyeRay(eye, lookAt, FOV, new Vector2((float) nx, (float) ny));
                     HitPoint hitPoint =
-                        findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
+                            findClosestHitPoint(s, vectors.getFirst(), vectors.getLast());
 
                     acc = acc.add(computeColor(s, vectors.getFirst(), vectors.getLast(), hitPoint));
                 }

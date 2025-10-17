@@ -1,13 +1,10 @@
-import ExerciseRayTracing.Color;
-import ExerciseRayTracing.Exercise4RayTracing;
-import ExerciseRayTracing.ImageTexture;
-import ExerciseRayTracing.Scene;
-import ExerciseRayTracing.Sphere;
+import ExerciseRayTracing.*;
 import JavaVectors.Vector3;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 
@@ -16,16 +13,24 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Hello world!");
 
-        Scene s = createNewScene();
+        Scene s = createNewSceneExercise4();
+        Instant start = Instant.now();
 
         // Exercise 1
         Exercise1LinearRGB ex1 = new Exercise1LinearRGB();
         //ex1.createGradient();
 
+        // Exercise 2 is in the other Project folder!
+
+        // Exercise 3
+        Exercise3RayTracing ex3 = new Exercise3RayTracing(new Vector3(0, 0, -4), new Vector3(0, 0, 6), 36);
+        //ex3.generateEyeRays();
+
         // Exercise 4
-        Instant start = Instant.now();
+
         Exercise4RayTracing ex4 = new Exercise4RayTracing(s);
         ex4.generateEyeRays();
+
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
 
@@ -38,7 +43,7 @@ public class Main {
     }
 
     // cool scene
-    private static Scene createNewScene() {
+    private static Scene createNewSceneExercise4() {
 
         ArrayList<Sphere> spheres = new ArrayList<>();
 
