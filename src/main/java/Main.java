@@ -47,7 +47,6 @@ public class Main {
         ArrayList<Sphere> spheres = new ArrayList<>();
 
         // light source
-        //TODO: find better light placement
         spheres.add(new Sphere(new Vector3(500, -800, 500), 800, Color.WHITE, Color.WHITE2, Color.BLACK));
         spheres.add(new Sphere(new Vector3(-1400, 200, 600), 700F, Color.WHITE, Color.WHITE2, Color.BLACK));
 
