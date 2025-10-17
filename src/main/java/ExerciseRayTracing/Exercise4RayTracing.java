@@ -208,7 +208,7 @@ public class Exercise4RayTracing {
         Color diffuse = (hitPoint.sphere.texture != null) ? hitPoint.sphere.texture.get(u, v) : hitPoint.sphere.diffuse;
 
         if (Vector3.dot(wr, dr) > 1 - 0.01f) {
-            return diffuse.add(hitPoint.sphere.specular.multiply(10f));
+            return diffuse.add(hitPoint.sphere.specular.multiply(1f));
         }
 
         return diffuse;

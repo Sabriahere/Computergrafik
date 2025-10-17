@@ -54,18 +54,17 @@ public class Main {
         // spheres
         Random random = new Random();
         for (int i = 0; i < 4; i++) {
-            Color color = Color.colorList.get(random.nextInt(0, Color.colorList.size()));
 
             for (int j = 0; j < 4; j++) {
-                Sphere sphere = new Sphere(new Vector3(-1.5 + i, -0.5, 0.5 + j), 0.4F, color.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE.multiply(0.25 + 0.25 * j));
-                if (i % 3 == 0) {
+                Sphere sphere = new Sphere(new Vector3(-1.5 + i, -0.5, 0.5 + j), 0.4F, Color.WHITE, Color.BLACK, Color.WHITE.multiply(0.25 + 0.25 * j));
+                if (i % 4 == 0) {
                     sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chessboard.png");
-                } else if (i % 3 == 1) {
+                } else if (i % 4 == 1) {
                     sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/stripes.png");
-                } else if (i % 3 == 2) {
-                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/water2.png");
+                } else if (i % 4 == 2) {
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/water.png");
                 } else {
-                    sphere.changeColor(Color.RED);
+                    sphere.changeColor(Color.RED.multiply(0.9f).add(Color.WHITE.multiply(0.1f)));
                 }
                 spheres.add(sphere);
             }

@@ -46,9 +46,9 @@ public class ImageTexture {
 
     private Color gammaCorrection(float r, float g, float b) {
         double GAMMA = 2.2;
-        r = (float) Math.pow(r, 1 / GAMMA);
-        g = (float) Math.pow(g, 1 / GAMMA);
-        b = (float) Math.pow(b, 1 / GAMMA);
+        r = (float) Math.pow(r, GAMMA);
+        g = (float) Math.pow(g, GAMMA);
+        b = (float) Math.pow(b, GAMMA);
         return new Color(r, g, b);
     }
 
