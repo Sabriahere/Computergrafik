@@ -35,4 +35,8 @@ public class Sphere {
         this.texture = texture;
     }
 
+    public void changeColor(Color color) {
+        this.diffuse = color;
+    }
+
 }

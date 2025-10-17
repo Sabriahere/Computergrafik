@@ -17,7 +17,6 @@ public class ImageTexture {
     private final int WIDTH;
     private final int HEIGHT;
     private final int[] PIXELS;
-    private final double GAMMA = 2.2;
 
     public ImageTexture(String filename) {
         try {
@@ -42,15 +41,15 @@ public class ImageTexture {
         float g = ((rgb >> 8) & 255) / 255F;
         float b = ((rgb) & 255) / 255f;
 
-        return new Color(r, g, b);
+        return gammaCorrection(r, g, b);
     }
 
-    //TODO: implement gammaCorrection
-    private Vector3 gammaCorrection(Vector3 point) {
-        double r = Math.pow(point.x(), 1 / GAMMA);
-        double g = Math.pow(point.y(), 1 / GAMMA);
-        double b = Math.pow(point.z(), 1 / GAMMA);
-        return new Vector3(r, g, b);
+    private Color gammaCorrection(float r, float g, float b) {
+        double GAMMA = 2.2;
+        r = (float) Math.pow(r, 1 / GAMMA);
+        g = (float) Math.pow(g, 1 / GAMMA);
+        b = (float) Math.pow(b, 1 / GAMMA);
+        return new Color(r, g, b);
     }
 
 }

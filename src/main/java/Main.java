@@ -62,8 +62,10 @@ public class Main {
                     sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chessboard.png");
                 } else if (i % 3 == 1) {
                     sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/stripes.png");
+                } else if (i % 3 == 2) {
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/water2.png");
                 } else {
-                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/water.png");
+                    sphere.changeColor(Color.RED);
                 }
                 spheres.add(sphere);
             }
