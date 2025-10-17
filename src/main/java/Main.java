@@ -61,7 +61,7 @@ public class Main {
                 if (i % 2 == 0) {
                     sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chestboard.png");
                 } else {
-                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/pumpkin.png");
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/stripes.png");
                 }
                 spheres.add(sphere);
             }
