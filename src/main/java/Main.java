@@ -58,10 +58,12 @@ public class Main {
 
             for (int j = 0; j < 4; j++) {
                 Sphere sphere = new Sphere(new Vector3(-1.5 + i, -0.5, 0.5 + j), 0.4F, color.multiply(0.7f).add(Color.WHITE.multiply(0.3f)), Color.BLACK, Color.WHITE.multiply(0.25 + 0.25 * j));
-                if (i % 2 == 0) {
-                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chestboard.png");
-                } else {
+                if (i % 3 == 0) {
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/chessboard.png");
+                } else if (i % 3 == 1) {
                     sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/stripes.png");
+                } else {
+                    sphere.texture = new ImageTexture("src/main/resources/ExerciseRayTracing/water.png");
                 }
                 spheres.add(sphere);
             }
