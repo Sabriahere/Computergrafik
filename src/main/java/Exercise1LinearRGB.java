@@ -22,23 +22,26 @@ public class Exercise1LinearRGB {
             for (int x = 0; x < width; x++) {
 
                 // Color Interpolation
+                // Exercise 1:
                 float lambda = (float) x / (width - 1);
-                //Vector3 point = Vector3.lerp(red, green, lambda);
+                Vector3 point = Vector3.lerp(red, green, lambda);
 
                 // Linear RGB + Gamma Correction -> sRGB
                 // Exercise 1:
-                //pixels[y * width + x] = rgb(gammaCorrection(point));
+                pixels[y * width + x] = rgb(gammaCorrection(point));
 
+                /*
                 // add to the whole equation to change color
+                // Task from class
                 float a = (float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 0.5f));
                 float b = (float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 1.5f));
                 float c = (float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 1.0f));
                 pixels[y * width + x] = rgb(new Vector3(a, b, c));
+                 */
 
+                // Task from class
                 //pixels[y * width + x] = rgb(Vector3.ONE.multiply((float) (Math.sin((2 * x / 30.0) * 0.5f + Math.sin(y / 30.0) * 2.5f + 0.5f))));
 
-                //Exercise 1:
-                //pixels[y * width + x] = rgb(new Vector3(a, b, c));
 
             }
         }
@@ -54,13 +57,15 @@ public class Exercise1LinearRGB {
         f.setVisible(true);
     }
 
+    // [0,1] -> [0,255] -> 0xFF[RED][GREEN][BLUE]
     private int rgb(Vector3 v) {
         int r = (int) (v.x() * 255);
         int g = (int) (v.y() * 255);
         int b = (int) (v.z() * 255);
-        return 0xFF000000 | (r << 16) | (g << 8) | b; // alpha=255
+        return 0xFF000000 | (r << 16) | (g << 8) | b; // alpha = 255
     }
 
+    // sRGB = Linear^(1/gamma)
     private Vector3 gammaCorrection(Vector3 point) {
         double r = Math.pow(point.x(), 1 / gamma);
         double g = Math.pow(point.y(), 1 / gamma);

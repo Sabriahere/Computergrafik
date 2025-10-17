@@ -18,6 +18,9 @@ public class Main {
 
         Scene s = createNewScene();
 
+        Exercise1LinearRGB ex1 = new Exercise1LinearRGB();
+        ex1.createGradient();
+
         Instant start = Instant.now();
         Exercise4RayTracing ex4 = new Exercise4RayTracing(s);
         ex4.generateEyeRays();
