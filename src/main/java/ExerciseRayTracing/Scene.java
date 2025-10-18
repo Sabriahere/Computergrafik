@@ -32,6 +32,10 @@ public class Scene {
         sphereList = new ArrayList<>(Arrays.asList(a, b, c, d, e, f, g));
     }
 
+    public Scene(ArrayList<Sphere> sphereList) {
+        this.sphereList = sphereList;
+    }
+
     public ArrayList<Sphere> getSphereList() {
         return sphereList;
     }
