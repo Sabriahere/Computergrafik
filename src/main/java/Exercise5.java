@@ -24,6 +24,8 @@ public class Exercise5 {
     int width = 600;
     int height = 400;
     int[] pixels = new int[width * height];
+    private List<int[]> edges = new ArrayList<>();
+
 
     Vector2 A = new Vector2(100, 100);
     Vector2 B = new Vector2(300, 200);
@@ -35,15 +37,15 @@ public class Exercise5 {
         JPanel panel = new JPanel() {
             @Override
             public void paint(Graphics g) {
-                g.setColor(Color.RED);
                 g.clearRect(0, 0, this.getWidth(), this.getHeight());
-                g.drawPolygon(new int[]{50, 100, 200}, new int[]{50, 100, 50 + i}, 3);
-                repaint();
-                if (i > 50) {
-                    i -= 50;
-                } else {
-                    i += 50;
+                g.setColor(Color.BLACK);
+                g.fillRect(0, 0, this.getWidth(), this.getHeight());
+
+                g.setColor(Color.WHITE);
+                for (int[] e : edges) {
+                    g.drawLine(e[0], e[1], e[2], e[3]);
                 }
+
             }
         };
 
@@ -60,21 +62,35 @@ public class Exercise5 {
         Mesh mesh = Mesh.createCube(color, color, color, color, color, color);
         List<Vertex> vertices = mesh.vertices;
         List<Tri> tris = mesh.triangles;
+        edges.clear();
 
         for (Tri tri : tris) {
+            // vertex shader
             Vertex a = vertexShader(vertices.get(tri.a()));
             Vertex b = vertexShader(vertices.get(tri.b()));
             Vertex c = vertexShader(vertices.get(tri.c()));
 
+            // vertex projection
             Vertex ap = vertexProjection(a);
             Vertex bp = vertexProjection(b);
             Vertex cp = vertexProjection(c);
 
+            // ndc -> pixel
             Vector2 pixelA = ndcToPixels(ap);
             Vector2 pixelB = ndcToPixels(bp);
             Vector2 pixelC = ndcToPixels(cp);
 
+            // draw vertices -> put into edges
+            int ax = (int) pixelA.x(), ay = (int) pixelA.y();
+            int bx = (int) pixelB.x(), by = (int) pixelB.y();
+            int cx = (int) pixelC.x(), cy = (int) pixelC.y();
+
+            edges.add(new int[]{ax, ay, bx, by});
+            edges.add(new int[]{bx, by, cx, cy});
+            edges.add(new int[]{cx, cy, ax, ay});
         }
+
+        render2DTriangles();
     }
 
     Vertex vertexShader(Vertex v) {

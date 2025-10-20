@@ -31,7 +31,7 @@ public class Main {
 
         // Exercise 5
         Exercise5 ex5 = new Exercise5();
-        ex5.render2DTriangles();
+        //ex5.render2DTriangles();
         //ex5.exerciseInClass();
         ex5.renderWireframeMesh();
 
