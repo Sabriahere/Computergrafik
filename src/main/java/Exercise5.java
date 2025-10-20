@@ -45,7 +45,6 @@ public class Exercise5 {
                 for (int[] e : edges) {
                     g.drawLine(e[0], e[1], e[2], e[3]);
                 }
-
             }
         };
 
@@ -70,6 +69,11 @@ public class Exercise5 {
             Vertex b = vertexShader(vertices.get(tri.b()));
             Vertex c = vertexShader(vertices.get(tri.c()));
 
+            // if vertex is behind the camera, no division by 0 -> ignore this triangle
+            if (a.position().w() <= 0 || b.position().w() <= 0 || c.position().w() <= 0) {
+                continue;
+            }
+
             // vertex projection
             Vertex ap = vertexProjection(a);
             Vertex bp = vertexProjection(b);
@@ -84,6 +88,12 @@ public class Exercise5 {
             int ax = (int) pixelA.x(), ay = (int) pixelA.y();
             int bx = (int) pixelB.x(), by = (int) pixelB.y();
             int cx = (int) pixelC.x(), cy = (int) pixelC.y();
+
+            // Backface Culling with 2D cross product of the triangle edges, (AB x AC) = n, n_z > 0 => CW we need this
+            // if n_z < 0 => back facing -> we skip
+            if ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax) <= 0) {
+                continue;
+            }
 
             edges.add(new int[]{ax, ay, bx, by});
             edges.add(new int[]{bx, by, cx, cy});
