@@ -24,7 +24,7 @@ public class Exercise5 {
     int width = 600;
     int height = 400;
     int[] pixels = new int[width * height];
-    private List<int[]> edges = new ArrayList<>();
+    private final List<int[]> edges = new ArrayList<>();
 
 
     Vector2 A = new Vector2(100, 100);
@@ -107,10 +107,10 @@ public class Exercise5 {
         Matrix4x4 MVP = createMVP();
         Vector4 p = v.position();
         Vector4 position = new Vector4(
-            MVP.m11() * p.x() + MVP.m12() * p.y() + MVP.m13() * p.z() + MVP.m14() * p.w(),
-            MVP.m21() * p.x() + MVP.m22() * p.y() + MVP.m23() * p.z() + MVP.m24() * p.w(),
-            MVP.m31() * p.x() + MVP.m32() * p.y() + MVP.m33() * p.z() + MVP.m34() * p.w(),
-            MVP.m41() * p.x() + MVP.m42() * p.y() + MVP.m43() * p.z() + MVP.m44() * p.w()
+                MVP.m11() * p.x() + MVP.m21() * p.y() + MVP.m31() * p.z() + MVP.m41() * p.w(),
+                MVP.m12() * p.x() + MVP.m22() * p.y() + MVP.m32() * p.z() + MVP.m42() * p.w(),
+                MVP.m13() * p.x() + MVP.m23() * p.y() + MVP.m33() * p.z() + MVP.m43() * p.w(),
+                MVP.m14() * p.x() + MVP.m24() * p.y() + MVP.m34() * p.z() + MVP.m44() * p.w()
         );
         return new Vertex(position, v.worldCoordinates(), v.color(), v.texCoord(), v.normal());
     }
@@ -121,8 +121,8 @@ public class Exercise5 {
     }
 
     Vector2 ndcToPixels(Vertex v) {
-        float x = (float) (v.position().x() * width / 2.0 + width / 2.0);
-        float y = (float) (v.position().y() * width / 2.0 + height / 2.0);
+        float x = (v.position().x() * 0.5f + 0.5f) * width;
+        float y = (-v.position().y() * 0.5f + 0.5f) * height;
         return new Vector2(x, y);
     }
 
@@ -131,8 +131,8 @@ public class Exercise5 {
         Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, 0, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
         float zNear = 0.1f;
         float zFar = 100.0f;
-        Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (float) width / height, zNear, zFar);
-        return Matrix4x4.multiply(P, V, M);
+        Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (1.0f * width) / height, zNear, zFar);
+        return Matrix4x4.multiply(M, V, P);
     }
 
     public void exerciseInClass() {
@@ -169,11 +169,11 @@ public class Exercise5 {
         double u = AC.y() * (x - A.x()) - AC.x() * (y - A.y());
         double v = -AB.y() * (x - A.x()) + AB.x() * (y - A.y());
 
-        List<Double> uvListe = new ArrayList<>();
-        uvListe.add(u * inverseParameter);
-        uvListe.add(v * inverseParameter);
+        List<Double> uvList = new ArrayList<>();
+        uvList.add(u * inverseParameter);
+        uvList.add(v * inverseParameter);
 
-        return uvListe;
+        return uvList;
     }
 
 }
