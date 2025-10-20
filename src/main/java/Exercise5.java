@@ -21,6 +21,7 @@ import Mesh.Vector3;
 public class Exercise5 {
 
     static int i = 0;
+    float angle = 0.0f;
     int width = 600;
     int height = 400;
     int[] pixels = new int[width * height];
@@ -40,11 +41,13 @@ public class Exercise5 {
                 g.clearRect(0, 0, this.getWidth(), this.getHeight());
                 g.setColor(Color.BLACK);
                 g.fillRect(0, 0, this.getWidth(), this.getHeight());
+                renderWireframeMesh();
 
                 g.setColor(Color.WHITE);
                 for (int[] e : edges) {
                     g.drawLine(e[0], e[1], e[2], e[3]);
                 }
+                repaint();
             }
         };
 
@@ -55,6 +58,11 @@ public class Exercise5 {
     }
 
     public void renderWireframeMesh() {
+        angle += 0.0005f;
+
+        if (angle > Math.PI) {
+            angle = 0.0f;
+        }
 
         Vector3 color = new Vector3(100, 100, 100);
 
@@ -99,8 +107,6 @@ public class Exercise5 {
             edges.add(new int[]{bx, by, cx, cy});
             edges.add(new int[]{cx, cy, ax, ay});
         }
-
-        render2DTriangles();
     }
 
     Vertex vertexShader(Vertex v) {
@@ -127,8 +133,8 @@ public class Exercise5 {
     }
 
     private Matrix4x4 createMVP() {
-        Matrix4x4 M = Matrix4x4.createRotationY(0.5f);
-        Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, 0, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+        Matrix4x4 M = Matrix4x4.createRotationY(angle);
+        Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, -3, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
         float zNear = 0.1f;
         float zFar = 100.0f;
         Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (1.0f * width) / height, zNear, zFar);
