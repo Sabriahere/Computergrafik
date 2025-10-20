@@ -104,7 +104,14 @@ public class Exercise5 {
     }
 
     Vertex vertexShader(Vertex v) {
-        Vector4 position = new Vector4(v.position().x(), v.position().y(), 0, v.position().z() + 4);
+        Matrix4x4 MVP = createMVP();
+        Vector4 p = v.position();
+        Vector4 position = new Vector4(
+            MVP.m11() * p.x() + MVP.m12() * p.y() + MVP.m13() * p.z() + MVP.m14() * p.w(),
+            MVP.m21() * p.x() + MVP.m22() * p.y() + MVP.m23() * p.z() + MVP.m24() * p.w(),
+            MVP.m31() * p.x() + MVP.m32() * p.y() + MVP.m33() * p.z() + MVP.m34() * p.w(),
+            MVP.m41() * p.x() + MVP.m42() * p.y() + MVP.m43() * p.z() + MVP.m44() * p.w()
+        );
         return new Vertex(position, v.worldCoordinates(), v.color(), v.texCoord(), v.normal());
     }
 
@@ -117,6 +124,15 @@ public class Exercise5 {
         float x = (float) (v.position().x() * width / 2.0 + width / 2.0);
         float y = (float) (v.position().y() * width / 2.0 + height / 2.0);
         return new Vector2(x, y);
+    }
+
+    private Matrix4x4 createMVP() {
+        Matrix4x4 M = Matrix4x4.createRotationY(0.5f);
+        Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, 0, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+        float zNear = 0.1f;
+        float zFar = 100.0f;
+        Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (float) width / height, zNear, zFar);
+        return Matrix4x4.multiply(P, V, M);
     }
 
     public void exerciseInClass() {
