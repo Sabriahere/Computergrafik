@@ -25,9 +25,8 @@ public class Exercise5 {
     int width = 600;
     int height = 400;
     int[] pixels = new int[width * height];
-    private final ArrayList<int[]> edges = new ArrayList<>();
-    private final ArrayList<Vector3> edgeColors = new ArrayList<>();
-
+    private final ArrayList<int[]> faces = new ArrayList<>();
+    private final ArrayList<Vector3> faceColors = new ArrayList<>();
 
     Vector2 A = new Vector2(100, 100);
     Vector2 B = new Vector2(300, 200);
@@ -44,11 +43,11 @@ public class Exercise5 {
                 g.fillRect(0, 0, this.getWidth(), this.getHeight());
                 renderWireframeMesh();
 
-                for (int i = 0; i < edges.size(); i++) {
-                    int[] e = edges.get(i);
-                    Vector3 edgeColor = edgeColors.get(i);
-                    g.setColor(new Color(edgeColor.x(), edgeColor.y(), edgeColor.z()));
-                    g.drawLine(e[0], e[1], e[2], e[3]);
+                for (int i = 0; i < faces.size(); i++) {
+                    int[] f = faces.get(i);
+                    Vector3 c = faceColors.get(i);
+                    g.setColor(new Color(c.x(), c.y(), c.z()));
+                    g.fillPolygon(new int[]{f[0], f[2], f[4]}, new int[]{f[1], f[3], f[5]}, 3);
                 }
                 repaint();
             }
@@ -78,11 +77,10 @@ public class Exercise5 {
 
         List<Vertex> vertices = mesh.vertices;
         List<Tri> tris = mesh.triangles;
-        edges.clear();
-        edgeColors.clear();
+        faces.clear();
+        faceColors.clear();
 
         for (Tri tri : tris) {
-            // vertex shader
             Vertex a = vertexShader(vertices.get(tri.a()));
             Vertex b = vertexShader(vertices.get(tri.b()));
             Vertex c = vertexShader(vertices.get(tri.c()));
@@ -113,12 +111,8 @@ public class Exercise5 {
                 continue;
             }
 
-            edges.add(new int[]{ax, ay, bx, by});
-            edges.add(new int[]{bx, by, cx, cy});
-            edges.add(new int[]{cx, cy, ax, ay});
-            edgeColors.add(a.color());
-            edgeColors.add(b.color());
-            edgeColors.add(c.color());
+            faces.add(new int[]{ax, ay, bx, by, cx, cy});
+            faceColors.add(a.color());
         }
     }
 
