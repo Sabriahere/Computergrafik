@@ -25,7 +25,8 @@ public class Exercise5 {
     int width = 600;
     int height = 400;
     int[] pixels = new int[width * height];
-    private final List<int[]> edges = new ArrayList<>();
+    private final ArrayList<int[]> edges = new ArrayList<>();
+    private final ArrayList<Vector3> edgeColors = new ArrayList<>();
 
 
     Vector2 A = new Vector2(100, 100);
@@ -43,8 +44,10 @@ public class Exercise5 {
                 g.fillRect(0, 0, this.getWidth(), this.getHeight());
                 renderWireframeMesh();
 
-                g.setColor(Color.WHITE);
-                for (int[] e : edges) {
+                for (int i = 0; i < edges.size(); i++) {
+                    int[] e = edges.get(i);
+                    Vector3 edgeColor = edgeColors.get(i);
+                    g.setColor(new Color(edgeColor.x(), edgeColor.y(), edgeColor.z()));
                     g.drawLine(e[0], e[1], e[2], e[3]);
                 }
                 repaint();
@@ -64,12 +67,19 @@ public class Exercise5 {
             angle = 0.0f;
         }
 
-        Vector3 color = new Vector3(100, 100, 100);
+        Mesh mesh = Mesh.createCube(
+                new Vector3(1, 0, 0),//red
+                new Vector3(0, 1, 0),//green
+                new Vector3(0, 0, 1),//blue
+                new Vector3(1, 1, 0),//yellow
+                new Vector3(1, 0, 1),//magenta
+                new Vector3(0, 1, 1) //cyan
+        );
 
-        Mesh mesh = Mesh.createCube(color, color, color, color, color, color);
         List<Vertex> vertices = mesh.vertices;
         List<Tri> tris = mesh.triangles;
         edges.clear();
+        edgeColors.clear();
 
         for (Tri tri : tris) {
             // vertex shader
@@ -106,6 +116,9 @@ public class Exercise5 {
             edges.add(new int[]{ax, ay, bx, by});
             edges.add(new int[]{bx, by, cx, cy});
             edges.add(new int[]{cx, cy, ax, ay});
+            edgeColors.add(a.color());
+            edgeColors.add(b.color());
+            edgeColors.add(c.color());
         }
     }
 
