@@ -26,9 +26,14 @@ public class Main {
         //ex3.generateEyeRays();
 
         // Exercise 4
-
         Exercise4RayTracing ex4 = new Exercise4RayTracing(s);
-        ex4.generateEyeRays();
+        //ex4.generateEyeRays();
+
+        // Exercise 5
+        Exercise5 ex5 = new Exercise5();
+        ex5.render2DTriangles();
+        //ex5.exerciseInClass();
+        ex5.renderWireframeMesh();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);

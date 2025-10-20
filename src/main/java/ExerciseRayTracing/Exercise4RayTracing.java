@@ -29,7 +29,7 @@ public class Exercise4RayTracing {
 
     // for better performance, my pc is dying :(
     private static final int MAX_DEPTH = 5;
-    private static final int RAYS = 4096;
+    private static final int RAYS = 128;
 
     public Exercise4RayTracing(Scene s) {
         this.s = s;
