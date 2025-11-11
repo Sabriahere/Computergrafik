@@ -34,7 +34,8 @@ public class Main {
         Exercise5 ex5 = new Exercise5();
         //ex5.render2DTriangles();
         //ex5.exerciseInClass();
-        ex5.render2DTriangles();
+        //ex5.render2DTriangles();
+        ex5.exerciseInClass();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);

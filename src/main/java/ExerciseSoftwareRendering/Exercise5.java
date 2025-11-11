@@ -67,14 +67,13 @@ public class Exercise5 {
             angle -= (float) (Math.PI * 2);
         }
 
-
         Mesh mesh = Mesh.createCube(
-                new Vector3(1, 0, 0),//red
-                new Vector3(0, 1, 0),//green
-                new Vector3(0, 0, 1),//blue
-                new Vector3(1, 1, 0),//yellow
-                new Vector3(1, 0, 1),//magenta
-                new Vector3(0, 1, 1) //cyan
+            new Vector3(1, 0, 0),//red
+            new Vector3(0, 1, 0),//green
+            new Vector3(0, 0, 1),//blue
+            new Vector3(1, 1, 0),//yellow
+            new Vector3(1, 0, 1),//magenta
+            new Vector3(0, 1, 1) //cyan
         );
 
         List<Vertex> vertices = mesh.vertices;
@@ -122,10 +121,10 @@ public class Exercise5 {
         Matrix4x4 MVP = createMVP();
         Vector4 p = v.position();
         Vector4 position = new Vector4(
-                MVP.m11() * p.x() + MVP.m21() * p.y() + MVP.m31() * p.z() + MVP.m41() * p.w(),
-                MVP.m12() * p.x() + MVP.m22() * p.y() + MVP.m32() * p.z() + MVP.m42() * p.w(),
-                MVP.m13() * p.x() + MVP.m23() * p.y() + MVP.m33() * p.z() + MVP.m43() * p.w(),
-                MVP.m14() * p.x() + MVP.m24() * p.y() + MVP.m34() * p.z() + MVP.m44() * p.w()
+            MVP.m11() * p.x() + MVP.m21() * p.y() + MVP.m31() * p.z() + MVP.m41() * p.w(),
+            MVP.m12() * p.x() + MVP.m22() * p.y() + MVP.m32() * p.z() + MVP.m42() * p.w(),
+            MVP.m13() * p.x() + MVP.m23() * p.y() + MVP.m33() * p.z() + MVP.m43() * p.w(),
+            MVP.m14() * p.x() + MVP.m24() * p.y() + MVP.m34() * p.z() + MVP.m44() * p.w()
         );
         return new Vertex(position, v.worldCoordinates(), v.color(), v.texCoord(), v.normal());
     }
@@ -143,22 +142,26 @@ public class Exercise5 {
 
     private Matrix4x4 createMVP() {
         Matrix4x4 M1 = Matrix4x4.createRotationY(angle);
-        Matrix4x4 M2 = Matrix4x4.createRotationX(angle);
+        //Matrix4x4 M2 = Matrix4x4.createRotationX(angle);
         Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, -3, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
         float zNear = 0.1f;
         float zFar = 100.0f;
         Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (1.0f * width) / height, zNear, zFar);
-        return Matrix4x4.multiply(M1.multiply(M2), V, P);
-        //return Matrix4x4.multiply(M1, V, P);¶
+        //return Matrix4x4.multiply(M1.multiply(M2), V, P);
+        return Matrix4x4.multiply(M1, V, P);
     }
 
     public void exerciseInClass() {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
 
-                List<Double> uvList = calculateUV(x, y);
-                int u = uvList.get(0).intValue();
-                int v = uvList.get(1).intValue();
+                List<Double> uvList = calculateUV(x + 0.5, y + 0.5); // + 0.5 for some smoother edges
+                if (uvList == null) {
+                    continue;
+                }
+
+                double u = uvList.get(0);
+                double v = uvList.get(1);
 
                 if (u >= 0 && v >= 0 && (u + v) < 1) {
                     pixels[y * width + x] = ExerciseRayTracing.Color.RED.toARGB();
@@ -177,20 +180,22 @@ public class Exercise5 {
         f.setVisible(true);
     }
 
-    private List<Double> calculateUV(int x, int y) {
+    private List<Double> calculateUV(double x, double y) {
         Vector2 AB = B.subtract(A);
         Vector2 AC = C.subtract(A);
 
-        double inverseParameter = 1.0 / (AB.x() * AC.y() - AC.x() * AB.y());
+        double det = AB.x() * AC.y() - AC.x() * AB.y();
+        if (Math.abs(det) < 1e-8) { // ignore these triangles
+            return null;
+        }
 
-        double u = AC.y() * (x - A.x()) - AC.x() * (y - A.y());
-        double v = -AB.y() * (x - A.x()) + AB.x() * (y - A.y());
+        double invDet = 1.0 / det;
 
-        List<Double> uvList = new ArrayList<>();
-        uvList.add(u * inverseParameter);
-        uvList.add(v * inverseParameter);
+        double u = (AC.y() * (x - A.x()) - AC.x() * (y - A.y())) * invDet;
+        double v = (-AB.y() * (x - A.x()) + AB.x() * (y - A.y())) * invDet;
 
-        return uvList;
+        return List.of(u, v);
     }
+
 
 }
