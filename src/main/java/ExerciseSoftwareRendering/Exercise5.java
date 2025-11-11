@@ -1,3 +1,5 @@
+package ExerciseSoftwareRendering;
+
 import java.awt.Color;
 import java.awt.Frame;
 import java.awt.Graphics;
@@ -60,11 +62,11 @@ public class Exercise5 {
     }
 
     public void renderWireframeMesh() {
-        angle += 0.0005f;
-
-        if (angle > Math.PI) {
-            angle = 0.0f;
+        angle += 0.001f;
+        if (angle > Math.PI * 2) {
+            angle -= (float) (Math.PI * 2);
         }
+
 
         Mesh mesh = Mesh.createCube(
                 new Vector3(1, 0, 0),//red
@@ -85,7 +87,7 @@ public class Exercise5 {
             Vertex b = vertexShader(vertices.get(tri.b()));
             Vertex c = vertexShader(vertices.get(tri.c()));
 
-            // if vertex is behind the camera, no division by 0 -> ignore this triangle
+            // if vertex is behind the camera, no division by 0 -> ignore this triangle, perspective divide
             if (a.position().w() <= 0 || b.position().w() <= 0 || c.position().w() <= 0) {
                 continue;
             }
@@ -140,12 +142,14 @@ public class Exercise5 {
     }
 
     private Matrix4x4 createMVP() {
-        Matrix4x4 M = Matrix4x4.createRotationY(angle);
+        Matrix4x4 M1 = Matrix4x4.createRotationY(angle);
+        Matrix4x4 M2 = Matrix4x4.createRotationX(angle);
         Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, -3, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
         float zNear = 0.1f;
         float zFar = 100.0f;
         Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (1.0f * width) / height, zNear, zFar);
-        return Matrix4x4.multiply(M, V, P);
+        return Matrix4x4.multiply(M1.multiply(M2), V, P);
+        //return Matrix4x4.multiply(M1, V, P);¶
     }
 
     public void exerciseInClass() {

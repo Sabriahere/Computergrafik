@@ -1,4 +1,5 @@
 import ExerciseRayTracing.*;
+import ExerciseSoftwareRendering.Exercise5;
 import JavaVectors.Vector3;
 
 import java.time.Duration;
@@ -56,7 +57,6 @@ public class Main {
         spheres.add(new Sphere(new Vector3(-1400, 200, 600), 700F, Color.WHITE, Color.WHITE2, Color.BLACK));
 
         // spheres
-        Random random = new Random();
         for (int i = 0; i < 4; i++) {
 
             for (int j = 0; j < 4; j++) {
