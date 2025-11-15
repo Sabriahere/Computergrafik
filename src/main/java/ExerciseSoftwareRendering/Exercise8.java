@@ -299,10 +299,11 @@ public class Exercise8 {
                 Matrix4x4.createTranslation(3, 0, 0).multiply(Matrix4x4.createRotationX(angle)),
                 new ImageTexture("src/main/resources/ExerciseSoftwareRendering/chessboard.png"));
 
+        // Level 1 -> Root, Level 2 -> Cube1, Cube2, Sphere, Level 3 -> Cube 3
         root.children.add(cubeNode1);
         root.children.add(sphereNode);
         root.children.add(cubeNode2);
-        root.children.add(cubeNode3);
+        cubeNode2.children.add(cubeNode3);
 
         return root;
     }
