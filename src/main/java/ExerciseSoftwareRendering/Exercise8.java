@@ -241,7 +241,6 @@ public class Exercise8 {
         float spec = (float) Math.pow(rV, k);
         Vector3 specular = lightColor.multiply(specularFactor * spec);
 
-        // Combine
         Vector3 color = ambient.add(diffuse).add(specular);
 
         return new Vector3(
