@@ -34,15 +34,9 @@ public class Main {
         // Exercise 5
         Exercise5 ex5 = new Exercise5();
         //ex5.render2DTriangles();
-        //ex5.exerciseInClass();
-        //ex5.render2DTriangles();
 
+        // Exercise 6
         Exercise6 ex6 = new Exercise6();
-
-        Vector2 A = new Vector2(100, 100);
-        Vector2 B = new Vector2(300, 200);
-        Vector2 C = new Vector2(100, 300);
-        //ex6.rasterization(A, B, C, ExerciseSoftwareRendering.Color.RED, ExerciseSoftwareRendering.Color.BLUE, ExerciseSoftwareRendering.Color.LIGHTCYAN);
         ex6.render2DTriangles();
 
         Instant end = Instant.now();

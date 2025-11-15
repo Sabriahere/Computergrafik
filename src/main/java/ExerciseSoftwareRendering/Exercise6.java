@@ -13,6 +13,16 @@ public class Exercise6 {
     float angle = 0.0f;
     int width = 600;
     int height = 400;
+
+    Vector3 lightPos = new Vector3(3, 3, -3);
+    Vector3 lightColor = new Vector3(1, 1, 1);
+    Vector3 cameraPos = new Vector3(0, -3, -4);
+
+    float ambientFactor = 0.1f;
+    float diffuseFactor = 0.9f;
+    float specularFactor = 0.5f;
+    float k = 32.0f;
+
     int[] pixels = new int[width * height];
 
     public void render2DTriangles() {
@@ -54,6 +64,8 @@ public class Exercise6 {
                 new Vector3(1, 0, 1),//magenta
                 new Vector3(0, 1, 1) //cyan
         );
+
+        //Mesh mesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
 
         List<Vertex> vertices = mesh.vertices;
         List<Tri> tris = mesh.triangles;
@@ -132,7 +144,7 @@ public class Exercise6 {
     }
 
     private Matrix4x4 createV() {
-        return Matrix4x4.createLookAt(new Vector3(0, -3, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+        return Matrix4x4.createLookAt(cameraPos, new Vector3(0, 0, 0), new Vector3(0, -1, 0));
     }
 
     private Matrix4x4 createP() {
@@ -142,12 +154,7 @@ public class Exercise6 {
     }
 
     public void rasterization(Vector2 A, Vector2 B, Vector2 C, Vertex ap, Vertex bp, Vertex cp) {
-        float u;
-        float v;
-        float w;
-        Color a;
-        Color b;
-        Color c;
+        float u, v, w;
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -162,10 +169,10 @@ public class Exercise6 {
                 w = uvList.get(2);
 
                 if (u >= 0 && v >= 0 && (u + v) < 1) {
-                    a = Color.trans(ap.color());
-                    b = Color.trans(bp.color());
-                    c = Color.trans(cp.color());
-                    pixels[y * width + x] = a.multiply(w).add(b.multiply(u)).add(c.multiply(v)).toARGB();
+                    Vertex p = ap.multiply(w).add(bp.multiply(u)).add(cp.multiply(v));
+                    Vector3 shadedColor = fragmentShader(p);
+                    Color col = Color.trans(shadedColor);
+                    pixels[y * width + x] = col.toARGB();
                 }
             }
         }
@@ -188,4 +195,36 @@ public class Exercise6 {
 
         return List.of(u, v, w);
     }
+
+    private Vector3 fragmentShader(Vertex q) {
+        Vector3 baseColor = q.color();
+        Vector3 p = q.worldCoordinates();
+        Vector3 n = Vector3.normalize(q.normal());
+
+        Vector3 l = Vector3.normalize(lightPos.subtract(p));// to light
+        Vector3 r = Vector3.normalize(cameraPos.subtract(p));// to camera
+
+        // Emission
+        Vector3 ambient = baseColor.multiply(ambientFactor);
+
+        // Diffuse Lambert
+        float nDotL = Math.max(0.0f, Vector3.dot(n, l));
+        Vector3 diffuse = baseColor.multiply(diffuseFactor * nDotL);
+
+        // Specular Phong
+        Vector3 R = n.multiply(2.0f * nDotL).subtract(l);
+        float rV = Math.max(0.0f, Vector3.dot(R, r));
+        float spec = (float) Math.pow(rV, k);
+        Vector3 specular = lightColor.multiply(specularFactor * spec);
+
+        // Combine
+        Vector3 color = ambient.add(diffuse).add(specular);
+
+        return new Vector3(
+                Math.min(1.0f, Math.max(0.0f, color.x())),
+                Math.min(1.0f, Math.max(0.0f, color.y())),
+                Math.min(1.0f, Math.max(0.0f, color.z()))
+        );
+    }
+
 }
