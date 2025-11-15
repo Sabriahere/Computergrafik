@@ -154,6 +154,8 @@ public class Exercise8 {
     public void rasterization(Vector2 A, Vector2 B, Vector2 C, Vertex ap, Vertex bp, Vertex cp) {
         float u, v, w;
 
+        float[] uvw = new float[3];
+
         // Axis-aligned bounding box of the triangle (AABB) to make it faster
         int minX = (int) Math.max(0, Math.floor(Math.min(A.x(), Math.min(B.x(), C.x()))));
         int maxX = (int) Math.min(width - 1, Math.ceil(Math.max(A.x(), Math.max(B.x(), C.x()))));
@@ -163,14 +165,14 @@ public class Exercise8 {
         for (int y = minY; y < maxY; y++) {
             for (int x = minX; x < maxX; x++) {
 
-                List<Float> uvList = calculateUV(x + 0.5, y + 0.5, A, B, C); // + 0.5 for some smoother edges
-                if (uvList == null) {
+                if (!calculateUV(x + 0.5f, y + 0.5f, A, B, C, uvw)) {
                     continue;
                 }
 
-                u = uvList.get(0);
-                v = uvList.get(1);
-                w = uvList.get(2);
+                u = uvw[0];
+                v = uvw[1];
+                w = uvw[2];
+
 
                 if (u >= 0 && v >= 0 && (u + v) < 1) {
                     Vertex q = ap.multiply(w).add(bp.multiply(u)).add(cp.multiply(v));
@@ -190,13 +192,13 @@ public class Exercise8 {
         }
     }
 
-    private List<Float> calculateUV(double x, double y, Vector2 A, Vector2 B, Vector2 C) {
+    private boolean calculateUV(float x, float y, Vector2 A, Vector2 B, Vector2 C, float[] outUVW) {
         Vector2 AB = B.subtract(A);
         Vector2 AC = C.subtract(A);
 
         double det = AB.x() * AC.y() - AC.x() * AB.y();
         if (Math.abs(det) < 1e-8) { // ignore these triangles
-            return null;
+            return false;
         }
 
         double invDet = 1.0 / det;
@@ -205,16 +207,19 @@ public class Exercise8 {
         float v = (float) ((-AB.y() * (x - A.x()) + AB.x() * (y - A.y())) * invDet);
         float w = 1 - u - v;
 
-        return List.of(u, v, w);
+        outUVW[0] = u;
+        outUVW[1] = v;
+        outUVW[2] = w;
+        return true;
     }
+
 
     private Vector3 fragmentShader(Vertex q) {
         Vector3 baseColor = q.color();
 
         if (currentTexture != null && q.texCoord() != null) {
             Vector2 uv = q.texCoord();
-            Vector3 texColor = currentTexture.sampleBilinear(uv.x(), uv.y());
-            baseColor = baseColor.multiply(texColor);
+            baseColor = currentTexture.sampleBilinear(uv.x(), uv.y());
         }
 
         Vector3 p = q.worldCoordinates();
@@ -280,7 +285,8 @@ public class Exercise8 {
                 new Vector3(0, 1, 0),
                 new Vector3(0, 1, 1));
         SceneGraphNode cubeNode3 =
-                new SceneGraphNode(cubeMesh3, Matrix4x4.createTranslation(-3, 1, 1));
+                new SceneGraphNode(cubeMesh3, Matrix4x4.createTranslation(-3, 1, 1),
+                        new ImageTexture("src/main/resources/ExerciseSoftwareRendering/stripes.png"));
 
         // Sphere
         Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
