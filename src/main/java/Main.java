@@ -1,8 +1,8 @@
 import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
 import ExerciseSoftwareRendering.Exercise6;
+import ExerciseSoftwareRendering.Exercise7;
 import JavaVectors.Vector3;
-import Mesh.Vector2;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -21,7 +21,7 @@ public class Main {
         Exercise1LinearRGB ex1 = new Exercise1LinearRGB();
         //ex1.createGradient();
 
-        // Exercise 2 is in the other Project folder!
+        // Exercise 2 is in another Project folder (Part A hand in)
 
         // Exercise 3
         Exercise3RayTracing ex3 = new Exercise3RayTracing(new Vector3(0, 0, -4), new Vector3(0, 0, 6), 36);
@@ -37,7 +37,11 @@ public class Main {
 
         // Exercise 6
         Exercise6 ex6 = new Exercise6();
-        ex6.render2DTriangles();
+        //ex6.render2DTriangles();
+
+        //Exercise 7
+        Exercise7 ex7 = new Exercise7();
+        ex7.render2DTriangles();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
