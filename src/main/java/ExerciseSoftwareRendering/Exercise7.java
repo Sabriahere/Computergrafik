@@ -28,9 +28,14 @@ public class Exercise7 {
 
     float[] zBuffer = new float[width * height];
 
+    SceneGraphNode root;
+    Matrix4x4 currentModel;
+    Matrix4x4 currentMVP;
+
     int[] pixels = new int[width * height];
 
     public void render2DTriangles() {
+        root = initScene();
         JFrame frame = new JFrame();
         JPanel panel = new JPanel() {
             @Override
@@ -125,7 +130,6 @@ public class Exercise7 {
 
         return new Vertex(clipPos, worldPos, v.color(), v.texCoord(), worldNormal);
     }
-
 
     Vertex vertexProjection(Vertex v) {
         float vw = 1.0f / v.position().w();
@@ -237,5 +241,30 @@ public class Exercise7 {
                 Math.min(1.0f, Math.max(0.0f, color.z()))
         );
     }
+
+    private SceneGraphNode initScene() {
+        SceneGraphNode root = new SceneGraphNode(null, Matrix4x4.IDENTITY);
+
+        // Cube
+        Mesh cubeMesh = Mesh.createCube(
+                new Vector3(1, 0, 0),
+                new Vector3(0, 1, 0),
+                new Vector3(0, 0, 1),
+                new Vector3(1, 1, 0),
+                new Vector3(1, 0, 1),
+                new Vector3(0, 1, 1));
+        SceneGraphNode cubeNode =
+                new SceneGraphNode(cubeMesh, Matrix4x4.IDENTITY);
+
+        // Sphere
+        Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
+        SceneGraphNode sphereNode = new SceneGraphNode(sphereMesh, Matrix4x4.createTranslation(3, 0, 0));
+
+        root.children.add(cubeNode);
+        root.children.add(sphereNode);
+
+        return root;
+    }
+
 
 }

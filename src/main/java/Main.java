@@ -2,6 +2,7 @@ import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
 import ExerciseSoftwareRendering.Exercise6;
 import ExerciseSoftwareRendering.Exercise7;
+import ExerciseSoftwareRendering.SceneGraphNode;
 import JavaVectors.Vector3;
 
 import java.time.Duration;
