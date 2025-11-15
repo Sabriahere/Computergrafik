@@ -61,23 +61,24 @@ public class Exercise7 {
     }
 
     public void renderWireframeMeshWithRasterization() {
-        Arrays.fill(zBuffer, Float.MAX_VALUE);
+        Arrays.fill(zBuffer, 1.0f);
         Arrays.fill(pixels, 0xFF000000);
+
         angle += 0.01f;
         if (angle > Math.PI * 2) {
             angle -= (float) (Math.PI * 2);
         }
 
-        Mesh mesh = Mesh.createCube(new Vector3(1, 0, 0),//red
-                new Vector3(0, 1, 0),//green
-                new Vector3(0, 0, 1),//blue
-                new Vector3(1, 1, 0),//yellow
-                new Vector3(1, 0, 1),//magenta
-                new Vector3(0, 1, 1) //cyan
-        );
+        Matrix4x4 view = createV();
+        Matrix4x4 proj = createP();
+        Matrix4x4 viewProjection = Matrix4x4.multiply(view, proj);
 
-        //Mesh mesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
+        if (root != null) {
+            root.render(Matrix4x4.IDENTITY, viewProjection, this);
+        }
+    }
 
+    void renderMesh(Mesh mesh) {
         List<Vertex> vertices = mesh.vertices;
         List<Tri> tris = mesh.triangles;
 
@@ -86,8 +87,10 @@ public class Exercise7 {
             Vertex b = vertexShader(vertices.get(tri.b()));
             Vertex c = vertexShader(vertices.get(tri.c()));
 
-            // if vertex is behind the camera, no division by 0 -> ignore this triangle, perspective divide
-            if (a.position().w() <= 0 || b.position().w() <= 0 || c.position().w() <= 0) {
+            // if all vertices are behind the camera, ignore this triangle
+            // (previous code skipped the triangle if ANY vertex was behind the camera,
+            // which causes aggressive clipping for triangles that are partially visible)
+            if (a.position().w() <= 0 && b.position().w() <= 0 && c.position().w() <= 0) {
                 continue;
             }
 
@@ -101,27 +104,23 @@ public class Exercise7 {
             Vector2 pixelB = ndcToPixels(bp);
             Vector2 pixelC = ndcToPixels(cp);
 
-            // draw vertices -> put into edges
             int ax = (int) pixelA.x(), ay = (int) pixelA.y();
             int bx = (int) pixelB.x(), by = (int) pixelB.y();
             int cx = (int) pixelC.x(), cy = (int) pixelC.y();
 
-            // Backface Culling with 2D cross product of the triangle edges, (AB x AC) = n, n_z > 0 => CW we need this
-            // if n_z < 0 => back facing -> we skip
+            // Backface culling
             if ((bx - ax) * (cy - ay) - (by - ay) * (cx - ax) <= 0) {
                 continue;
             }
 
             // Rasterization
             rasterization(pixelA, pixelB, pixelC, ap, bp, cp);
-
-
         }
     }
 
     Vertex vertexShader(Vertex v) {
-        Matrix4x4 M = createM();
-        Matrix4x4 MVP = createMVP();
+        Matrix4x4 M = currentModel;
+        Matrix4x4 MVP = currentMVP;
 
         Vector4 clipPos = MVP.multiply(v.position());
         Vector4 worlds = M.multiply(v.position());
@@ -181,8 +180,10 @@ public class Exercise7 {
 
                     // Z-Buffer
                     int index = y * width + x;
-                    float zMod = (zFar - zNear) / (q.position().z() - zNear);
-                    if (zBuffer[index] > zMod) {
+                    float z = q.position().z();          // NDC z in [-1,1]
+                    float zMod = (z + 1.0f) * 0.5f;      // [0,1], near=0, far=1
+
+                    if (zMod < zBuffer[index]) {
                         zBuffer[index] = zMod;
 
                         Vector3 shadedColor = fragmentShader(q);
@@ -245,23 +246,47 @@ public class Exercise7 {
     private SceneGraphNode initScene() {
         SceneGraphNode root = new SceneGraphNode(null, Matrix4x4.IDENTITY);
 
-        // Cube
-        Mesh cubeMesh = Mesh.createCube(
+        // Cube 1
+        Mesh cubeMesh1 = Mesh.createCube(
                 new Vector3(1, 0, 0),
                 new Vector3(0, 1, 0),
                 new Vector3(0, 0, 1),
                 new Vector3(1, 1, 0),
                 new Vector3(1, 0, 1),
                 new Vector3(0, 1, 1));
-        SceneGraphNode cubeNode =
-                new SceneGraphNode(cubeMesh, Matrix4x4.IDENTITY);
+        SceneGraphNode cubeNode1 =
+                new SceneGraphNode(cubeMesh1, Matrix4x4.createRotationY(angle));
+
+        // Cube 2
+        Mesh cubeMesh2 = Mesh.createCube(
+                new Vector3(1, 0, 0),
+                new Vector3(0, 1, 0),
+                new Vector3(0, 0, 1),
+                new Vector3(1, 1, 0),
+                new Vector3(1, 0, 1),
+                new Vector3(0, 1, 1));
+        SceneGraphNode cubeNode2 =
+                new SceneGraphNode(cubeMesh2, Matrix4x4.createTranslation(-3, 0, 0));
+
+        // Cube 3
+        Mesh cubeMesh3 = Mesh.createCube(
+                new Vector3(0, 0, 1),
+                new Vector3(1, 0, 0),
+                new Vector3(1, 1, 0),
+                new Vector3(1, 0, 1),
+                new Vector3(0, 1, 0),
+                new Vector3(0, 1, 1));
+        SceneGraphNode cubeNode3 =
+                new SceneGraphNode(cubeMesh3, Matrix4x4.createTranslation(-3, 1, 1));
 
         // Sphere
         Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
         SceneGraphNode sphereNode = new SceneGraphNode(sphereMesh, Matrix4x4.createTranslation(3, 0, 0));
 
-        root.children.add(cubeNode);
+        root.children.add(cubeNode1);
         root.children.add(sphereNode);
+        root.children.add(cubeNode2);
+        root.children.add(cubeNode3);
 
         return root;
     }
