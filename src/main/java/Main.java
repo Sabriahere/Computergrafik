@@ -2,6 +2,7 @@ import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
 import ExerciseSoftwareRendering.Exercise6;
 import ExerciseSoftwareRendering.Exercise7;
+import ExerciseSoftwareRendering.Exercise8;
 import JavaVectors.Vector3;
 
 import java.time.Duration;
@@ -44,7 +45,7 @@ public class Main {
         //ex7.render2DTriangles();
 
         //Exercise 8
-        Exercise7 ex8 = new Exercise7();
+        Exercise8 ex8 = new Exercise8();
         ex8.render2DTriangles();
 
         Instant end = Instant.now();

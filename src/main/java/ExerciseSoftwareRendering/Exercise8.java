@@ -31,6 +31,7 @@ public class Exercise8 {
     SceneGraphNode root;
     Matrix4x4 currentModel;
     Matrix4x4 currentMVP;
+    ImageTexture currentTexture;
 
     int[] pixels = new int[width * height];
 
@@ -220,6 +221,13 @@ public class Exercise8 {
 
     private Vector3 fragmentShader(Vertex q) {
         Vector3 baseColor = q.color();
+
+        if (currentTexture != null && q.texCoord() != null) {
+            Vector2 uv = q.texCoord();
+            Vector3 texColor = currentTexture.sampleBilinear(uv.x(), uv.y());
+            baseColor = baseColor.multiply(texColor);
+        }
+
         Vector3 p = q.worldCoordinates();
         Vector3 n = Vector3.normalize(q.normal());
 
@@ -287,7 +295,9 @@ public class Exercise8 {
 
         // Sphere
         Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
-        SceneGraphNode sphereNode = new SceneGraphNode(sphereMesh, Matrix4x4.createTranslation(3, 0, 0));
+        SceneGraphNode sphereNode = new SceneGraphNode(sphereMesh,
+                Matrix4x4.createTranslation(3, 0, 0).multiply(Matrix4x4.createRotationX(angle)),
+                new ImageTexture("src/main/resources/ExerciseSoftwareRendering/chessboard.png"));
 
         root.children.add(cubeNode1);
         root.children.add(sphereNode);
