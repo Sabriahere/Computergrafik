@@ -143,17 +143,6 @@ public class Exercise8 {
         return new Vector2(x, y);
     }
 
-    private Matrix4x4 createMVP() {
-        Matrix4x4 M = createM();
-        Matrix4x4 V = createV();
-        Matrix4x4 P = createP();
-        return Matrix4x4.multiply(M, V, P);
-    }
-
-    private Matrix4x4 createM() {
-        return Matrix4x4.createRotationY(angle);
-    }
-
     private Matrix4x4 createV() {
         return Matrix4x4.createLookAt(cameraPos, new Vector3(0, 0, 0), new Vector3(0, -1, 0));
     }
