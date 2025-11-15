@@ -1,26 +1,14 @@
 package ExerciseSoftwareRendering;
 
-import java.awt.Color;
-import java.awt.Frame;
-import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.Toolkit;
+import Mesh.*;
+
+import javax.swing.*;
+import java.awt.*;
 import java.awt.image.MemoryImageSource;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-
-import Mesh.*;
-import Mesh.Vector2;
-import Mesh.Vector3;
-
-/**
- * @author u244353 (Sabria Karim)
- * @since 10/13/2025
- */
-public class Exercise5 {
+public class Exercise6 {
 
     float angle = 0.0f;
     int width = 600;
@@ -32,7 +20,6 @@ public class Exercise5 {
     Vector2 A = new Vector2(100, 100);
     Vector2 B = new Vector2(300, 200);
     Vector2 C = new Vector2(100, 300);
-
 
     public void render2DTriangles() {
         JFrame frame = new JFrame();
@@ -67,12 +54,12 @@ public class Exercise5 {
         }
 
         Mesh mesh = Mesh.createCube(
-            new Vector3(1, 0, 0),//red
-            new Vector3(0, 1, 0),//green
-            new Vector3(0, 0, 1),//blue
-            new Vector3(1, 1, 0),//yellow
-            new Vector3(1, 0, 1),//magenta
-            new Vector3(0, 1, 1) //cyan
+                new Vector3(1, 0, 0),//red
+                new Vector3(0, 1, 0),//green
+                new Vector3(0, 0, 1),//blue
+                new Vector3(1, 1, 0),//yellow
+                new Vector3(1, 0, 1),//magenta
+                new Vector3(0, 1, 1) //cyan
         );
 
         List<Vertex> vertices = mesh.vertices;
@@ -120,10 +107,10 @@ public class Exercise5 {
         Matrix4x4 MVP = createMVP();
         Vector4 p = v.position();
         Vector4 position = new Vector4(
-            MVP.m11() * p.x() + MVP.m21() * p.y() + MVP.m31() * p.z() + MVP.m41() * p.w(),
-            MVP.m12() * p.x() + MVP.m22() * p.y() + MVP.m32() * p.z() + MVP.m42() * p.w(),
-            MVP.m13() * p.x() + MVP.m23() * p.y() + MVP.m33() * p.z() + MVP.m43() * p.w(),
-            MVP.m14() * p.x() + MVP.m24() * p.y() + MVP.m34() * p.z() + MVP.m44() * p.w()
+                MVP.m11() * p.x() + MVP.m21() * p.y() + MVP.m31() * p.z() + MVP.m41() * p.w(),
+                MVP.m12() * p.x() + MVP.m22() * p.y() + MVP.m32() * p.z() + MVP.m42() * p.w(),
+                MVP.m13() * p.x() + MVP.m23() * p.y() + MVP.m33() * p.z() + MVP.m43() * p.w(),
+                MVP.m14() * p.x() + MVP.m24() * p.y() + MVP.m34() * p.z() + MVP.m44() * p.w()
         );
         return new Vertex(position, v.worldCoordinates(), v.color(), v.texCoord(), v.normal());
     }
@@ -150,5 +137,48 @@ public class Exercise5 {
         return Matrix4x4.multiply(M1, V, P);
     }
 
+    public void exerciseInClass() {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
 
+                List<Double> uvList = calculateUV(x + 0.5, y + 0.5); // + 0.5 for some smoother edges
+                if (uvList == null) {
+                    continue;
+                }
+
+                double u = uvList.get(0);
+                double v = uvList.get(1);
+
+                if (u >= 0 && v >= 0 && (u + v) < 1) {
+                    pixels[y * width + x] = ExerciseRayTracing.Color.RED.toARGB();
+                }
+            }
+        }
+
+        Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
+        Frame f = new Frame() {
+            public void paint(Graphics g) {
+                g.drawImage(img, 0, 0, this);
+            }
+        };
+        f.setSize(width, height);
+        f.setVisible(true);
+    }
+
+    private List<Double> calculateUV(double x, double y) {
+        Vector2 AB = B.subtract(A);
+        Vector2 AC = C.subtract(A);
+
+        double det = AB.x() * AC.y() - AC.x() * AB.y();
+        if (Math.abs(det) < 1e-8) { // ignore these triangles
+            return null;
+        }
+
+        double invDet = 1.0 / det;
+
+        double u = (AC.y() * (x - A.x()) - AC.x() * (y - A.y())) * invDet;
+        double v = (-AB.y() * (x - A.x()) + AB.x() * (y - A.y())) * invDet;
+
+        return List.of(u, v);
+    }
 }

@@ -1,5 +1,6 @@
 import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
+import ExerciseSoftwareRendering.Exercise6;
 import JavaVectors.Vector3;
 
 import java.time.Duration;
@@ -35,7 +36,9 @@ public class Main {
         //ex5.render2DTriangles();
         //ex5.exerciseInClass();
         //ex5.render2DTriangles();
-        ex5.exerciseInClass();
+
+        Exercise6 ex6 = new Exercise6();
+        ex6.exerciseInClass();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
