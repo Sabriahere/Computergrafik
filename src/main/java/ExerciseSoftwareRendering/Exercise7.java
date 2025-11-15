@@ -180,12 +180,11 @@ public class Exercise7 {
 
                     // Z-Buffer
                     int index = y * width + x;
-                    float z = q.position().z();          // NDC z in [-1,1]
-                    float zMod = (z + 1.0f) * 0.5f;      // [0,1], near=0, far=1
+                    float z = q.position().z();
+                    float zMod = (z + 1.0f) * 0.5f;//[0,1]: near=0, far=1 instead if formula from class with zNear and zFar
 
                     if (zMod < zBuffer[index]) {
                         zBuffer[index] = zMod;
-
                         Vector3 shadedColor = fragmentShader(q);
                         pixels[index] = Color.trans(shadedColor).toARGB();
                     }
@@ -266,7 +265,7 @@ public class Exercise7 {
                 new Vector3(1, 0, 1),
                 new Vector3(0, 1, 1));
         SceneGraphNode cubeNode2 =
-                new SceneGraphNode(cubeMesh2, Matrix4x4.createTranslation(-3, 0, 0));
+                new SceneGraphNode(cubeMesh2, Matrix4x4.createTranslation(-3.001f, 0, 0));
 
         // Cube 3
         Mesh cubeMesh3 = Mesh.createCube(
