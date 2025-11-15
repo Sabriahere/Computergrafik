@@ -103,7 +103,7 @@ public class Exercise6 {
         Vector4 clipPos = MVP.multiply(v.position());
         Vector4 worlds = M.multiply(v.position());
         Vector3 worldPos = new Vector3(worlds.x(), worlds.y(), worlds.z());
-        Vector3 worldNormal = Vector3.transformNormal(v.normal(),M);
+        Vector3 worldNormal = Vector3.normalize(Vector3.transformNormal(v.normal(), M));
 
         return new Vertex(clipPos, worldPos, v.color(), v.texCoord(), worldNormal);
     }
