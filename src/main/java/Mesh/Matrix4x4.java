@@ -1,4 +1,5 @@
 package Mesh;
+
 /*
  * Copyright (c) 2013 - 2025 Simon Felix
  * All rights reserved.
@@ -371,6 +372,15 @@ public record Matrix4x4(float m11, float m12, float m13, float m14,
 
     public Matrix4x4 multiply(float s) {
         return multiply(this, s);
+    }
+
+    public Vector4 multiply(Vector4 v) {
+        return new Vector4(
+                m11() * v.x() + m21() * v.y() + m31() * v.z() + m41() * v.w(),
+                m12() * v.x() + m22() * v.y() + m32() * v.z() + m42() * v.w(),
+                m13() * v.x() + m23() * v.y() + m33() * v.z() + m43() * v.w(),
+                m14() * v.x() + m24() * v.y() + m34() * v.z() + m44() * v.w()
+        );
     }
 
     public Matrix4x4 subtract(Matrix4x4 b) {

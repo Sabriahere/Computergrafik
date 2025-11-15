@@ -26,8 +26,7 @@ public class Exercise6 {
 
                 renderWireframeMeshWithRasterization();
 
-                Image img = Toolkit.getDefaultToolkit().createImage(
-                        new MemoryImageSource(width, height, pixels, 0, width));
+                Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
                 g.drawImage(img, 0, 0, this);
             }
         };
@@ -48,8 +47,7 @@ public class Exercise6 {
             angle -= (float) (Math.PI * 2);
         }
 
-        Mesh mesh = Mesh.createCube(
-                new Vector3(1, 0, 0),//red
+        Mesh mesh = Mesh.createCube(new Vector3(1, 0, 0),//red
                 new Vector3(0, 1, 0),//green
                 new Vector3(0, 0, 1),//blue
                 new Vector3(1, 1, 0),//yellow
@@ -92,23 +90,24 @@ public class Exercise6 {
             }
 
             // Rasterization
-            rasterization(pixelA, pixelB, pixelC, Color.trans(ap.color()), Color.trans(bp.color()), Color.trans(cp.color()));
+            rasterization(pixelA, pixelB, pixelC, ap, bp, cp);
 
 
         }
     }
 
     Vertex vertexShader(Vertex v) {
+        Matrix4x4 M = createM();
         Matrix4x4 MVP = createMVP();
-        Vector4 p = v.position();
-        Vector4 position = new Vector4(
-                MVP.m11() * p.x() + MVP.m21() * p.y() + MVP.m31() * p.z() + MVP.m41() * p.w(),
-                MVP.m12() * p.x() + MVP.m22() * p.y() + MVP.m32() * p.z() + MVP.m42() * p.w(),
-                MVP.m13() * p.x() + MVP.m23() * p.y() + MVP.m33() * p.z() + MVP.m43() * p.w(),
-                MVP.m14() * p.x() + MVP.m24() * p.y() + MVP.m34() * p.z() + MVP.m44() * p.w()
-        );
-        return new Vertex(position, v.worldCoordinates(), v.color(), v.texCoord(), v.normal());
+
+        Vector4 clipPos = MVP.multiply(v.position());
+        Vector4 worlds = M.multiply(v.position());
+        Vector3 worldPos = new Vector3(worlds.x(), worlds.y(), worlds.z());
+        Vector3 worldNormal = Vector3.transformNormal(v.normal(),M);
+
+        return new Vertex(clipPos, worldPos, v.color(), v.texCoord(), worldNormal);
     }
+
 
     Vertex vertexProjection(Vertex v) {
         float vw = 1.0f / v.position().w();
@@ -122,25 +121,38 @@ public class Exercise6 {
     }
 
     private Matrix4x4 createMVP() {
-        Matrix4x4 M1 = Matrix4x4.createRotationY(angle);
-        //Matrix4x4 M2 = Matrix4x4.createRotationX(angle);
-        Matrix4x4 V = Matrix4x4.createLookAt(new Vector3(0, -3, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
-        float zNear = 0.1f;
-        float zFar = 100.0f;
-        Matrix4x4 P = Matrix4x4.createPerspectiveFieldOfView(1.57f, (1.0f * width) / height, zNear, zFar);
-        //return Matrix4x4.multiply(M1.multiply(M2), V, P);
-        return Matrix4x4.multiply(M1, V, P);
+        Matrix4x4 M = createM();
+        Matrix4x4 V = createV();
+        Matrix4x4 P = createP();
+        return Matrix4x4.multiply(M, V, P);
     }
 
-    public void rasterization(Vector2 A, Vector2 B, Vector2 C, Color a, Color b, Color c) {
-        double u;
-        double v;
-        double w;
+    private Matrix4x4 createM() {
+        return Matrix4x4.createRotationY(angle);
+    }
+
+    private Matrix4x4 createV() {
+        return Matrix4x4.createLookAt(new Vector3(0, -3, -4), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+    }
+
+    private Matrix4x4 createP() {
+        float zNear = 0.1f;
+        float zFar = 100.0f;
+        return Matrix4x4.createPerspectiveFieldOfView(1.57f, (1.0f * width) / height, zNear, zFar);
+    }
+
+    public void rasterization(Vector2 A, Vector2 B, Vector2 C, Vertex ap, Vertex bp, Vertex cp) {
+        float u;
+        float v;
+        float w;
+        Color a;
+        Color b;
+        Color c;
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
 
-                List<Double> uvList = calculateUV(x + 0.5, y + 0.5, A, B, C); // + 0.5 for some smoother edges
+                List<Float> uvList = calculateUV(x + 0.5, y + 0.5, A, B, C); // + 0.5 for some smoother edges
                 if (uvList == null) {
                     continue;
                 }
@@ -150,23 +162,16 @@ public class Exercise6 {
                 w = uvList.get(2);
 
                 if (u >= 0 && v >= 0 && (u + v) < 1) {
+                    a = Color.trans(ap.color());
+                    b = Color.trans(bp.color());
+                    c = Color.trans(cp.color());
                     pixels[y * width + x] = a.multiply(w).add(b.multiply(u)).add(c.multiply(v)).toARGB();
                 }
             }
         }
-//
-//        Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
-//        Frame f = new Frame() {
-//            public void paint(Graphics g) {
-//                g.drawImage(img, 0, 0, this);
-//            }
-//        };
-//        f.setSize(width, height);
-//        f.setVisible(true);
-
     }
 
-    private List<Double> calculateUV(double x, double y, Vector2 A, Vector2 B, Vector2 C) {
+    private List<Float> calculateUV(double x, double y, Vector2 A, Vector2 B, Vector2 C) {
         Vector2 AB = B.subtract(A);
         Vector2 AC = C.subtract(A);
 
@@ -177,9 +182,9 @@ public class Exercise6 {
 
         double invDet = 1.0 / det;
 
-        double u = (AC.y() * (x - A.x()) - AC.x() * (y - A.y())) * invDet;
-        double v = (-AB.y() * (x - A.x()) + AB.x() * (y - A.y())) * invDet;
-        double w = 1 - u - v;
+        float u = (float) ((AC.y() * (x - A.x()) - AC.x() * (y - A.y())) * invDet);
+        float v = (float) ((-AB.y() * (x - A.x()) + AB.x() * (y - A.y())) * invDet);
+        float w = 1 - u - v;
 
         return List.of(u, v, w);
     }
