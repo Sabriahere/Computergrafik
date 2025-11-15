@@ -41,7 +41,11 @@ public class Main {
 
         //Exercise 7
         Exercise7 ex7 = new Exercise7();
-        ex7.render2DTriangles();
+        //ex7.render2DTriangles();
+
+        //Exercise 8
+        Exercise7 ex8 = new Exercise7();
+        ex8.render2DTriangles();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);

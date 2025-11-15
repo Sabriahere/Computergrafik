@@ -30,4 +30,19 @@ public class SceneGraphNode {
             child.render(modelMatrix, viewProjectionMatrix, renderer);
         }
     }
+
+    void render(Matrix4x4 parentModel, Matrix4x4 viewProjectionMatrix, Exercise8 renderer) {
+        Matrix4x4 modelMatrix = Matrix4x4.multiply(parentModel, transformation);
+        Matrix4x4 mvp = Matrix4x4.multiply(modelMatrix, viewProjectionMatrix);
+        renderer.currentModel = modelMatrix;
+        renderer.currentMVP = mvp;
+
+        if (mesh != null) {
+            renderer.renderMesh(mesh);
+        }
+
+        for (SceneGraphNode child : children) {
+            child.render(modelMatrix, viewProjectionMatrix, renderer);
+        }
+    }
 }
