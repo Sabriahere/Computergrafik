@@ -5,7 +5,7 @@ import Mesh.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.MemoryImageSource;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Exercise6 {
@@ -14,12 +14,6 @@ public class Exercise6 {
     int width = 600;
     int height = 400;
     int[] pixels = new int[width * height];
-    private final ArrayList<int[]> faces = new ArrayList<>();
-    private final ArrayList<Vector3> faceColors = new ArrayList<>();
-
-    Vector2 A = new Vector2(100, 100);
-    Vector2 B = new Vector2(300, 200);
-    Vector2 C = new Vector2(100, 300);
 
     public void render2DTriangles() {
         JFrame frame = new JFrame();
@@ -27,17 +21,14 @@ public class Exercise6 {
             @Override
             public void paint(Graphics g) {
                 g.clearRect(0, 0, this.getWidth(), this.getHeight());
-                g.setColor(Color.BLACK);
+                g.setColor(java.awt.Color.BLACK);
                 g.fillRect(0, 0, this.getWidth(), this.getHeight());
-                renderWireframeMesh();
 
-                for (int i = 0; i < faces.size(); i++) {
-                    int[] f = faces.get(i);
-                    Vector3 c = faceColors.get(i);
-                    g.setColor(new Color(c.x(), c.y(), c.z()));
-                    g.fillPolygon(new int[]{f[0], f[2], f[4]}, new int[]{f[1], f[3], f[5]}, 3);
-                }
-                repaint();
+                renderWireframeMeshWithRasterization();
+
+                Image img = Toolkit.getDefaultToolkit().createImage(
+                        new MemoryImageSource(width, height, pixels, 0, width));
+                g.drawImage(img, 0, 0, this);
             }
         };
 
@@ -45,10 +36,14 @@ public class Exercise6 {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.add(panel);
         frame.setVisible(true);
+
+        Timer timer = new Timer(16, e -> panel.repaint()); // ~60 FPS
+        timer.start();
     }
 
-    public void renderWireframeMesh() {
-        angle += 0.001f;
+    public void renderWireframeMeshWithRasterization() {
+        Arrays.fill(pixels, 0xFF000000);
+        angle += 0.01f;
         if (angle > Math.PI * 2) {
             angle -= (float) (Math.PI * 2);
         }
@@ -64,8 +59,6 @@ public class Exercise6 {
 
         List<Vertex> vertices = mesh.vertices;
         List<Tri> tris = mesh.triangles;
-        faces.clear();
-        faceColors.clear();
 
         for (Tri tri : tris) {
             Vertex a = vertexShader(vertices.get(tri.a()));
@@ -98,8 +91,10 @@ public class Exercise6 {
                 continue;
             }
 
-            faces.add(new int[]{ax, ay, bx, by, cx, cy});
-            faceColors.add(a.color());
+            // Rasterization
+            rasterization(pixelA, pixelB, pixelC, Color.trans(ap.color()), Color.trans(bp.color()), Color.trans(cp.color()));
+
+
         }
     }
 
@@ -137,35 +132,41 @@ public class Exercise6 {
         return Matrix4x4.multiply(M1, V, P);
     }
 
-    public void exerciseInClass() {
+    public void rasterization(Vector2 A, Vector2 B, Vector2 C, Color a, Color b, Color c) {
+        double u;
+        double v;
+        double w;
+
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
 
-                List<Double> uvList = calculateUV(x + 0.5, y + 0.5); // + 0.5 for some smoother edges
+                List<Double> uvList = calculateUV(x + 0.5, y + 0.5, A, B, C); // + 0.5 for some smoother edges
                 if (uvList == null) {
                     continue;
                 }
 
-                double u = uvList.get(0);
-                double v = uvList.get(1);
+                u = uvList.get(0);
+                v = uvList.get(1);
+                w = uvList.get(2);
 
                 if (u >= 0 && v >= 0 && (u + v) < 1) {
-                    pixels[y * width + x] = ExerciseRayTracing.Color.RED.toARGB();
+                    pixels[y * width + x] = a.multiply(w).add(b.multiply(u)).add(c.multiply(v)).toARGB();
                 }
             }
         }
+//
+//        Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
+//        Frame f = new Frame() {
+//            public void paint(Graphics g) {
+//                g.drawImage(img, 0, 0, this);
+//            }
+//        };
+//        f.setSize(width, height);
+//        f.setVisible(true);
 
-        Image img = Toolkit.getDefaultToolkit().createImage(new MemoryImageSource(width, height, pixels, 0, width));
-        Frame f = new Frame() {
-            public void paint(Graphics g) {
-                g.drawImage(img, 0, 0, this);
-            }
-        };
-        f.setSize(width, height);
-        f.setVisible(true);
     }
 
-    private List<Double> calculateUV(double x, double y) {
+    private List<Double> calculateUV(double x, double y, Vector2 A, Vector2 B, Vector2 C) {
         Vector2 AB = B.subtract(A);
         Vector2 AC = C.subtract(A);
 
@@ -178,7 +179,8 @@ public class Exercise6 {
 
         double u = (AC.y() * (x - A.x()) - AC.x() * (y - A.y())) * invDet;
         double v = (-AB.y() * (x - A.x()) + AB.x() * (y - A.y())) * invDet;
+        double w = 1 - u - v;
 
-        return List.of(u, v);
+        return List.of(u, v, w);
     }
 }

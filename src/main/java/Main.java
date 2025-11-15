@@ -2,11 +2,11 @@ import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
 import ExerciseSoftwareRendering.Exercise6;
 import JavaVectors.Vector3;
+import Mesh.Vector2;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Random;
 
 
 public class Main {
@@ -38,7 +38,12 @@ public class Main {
         //ex5.render2DTriangles();
 
         Exercise6 ex6 = new Exercise6();
-        ex6.exerciseInClass();
+
+        Vector2 A = new Vector2(100, 100);
+        Vector2 B = new Vector2(300, 200);
+        Vector2 C = new Vector2(100, 300);
+        //ex6.rasterization(A, B, C, ExerciseSoftwareRendering.Color.RED, ExerciseSoftwareRendering.Color.BLUE, ExerciseSoftwareRendering.Color.LIGHTCYAN);
+        ex6.render2DTriangles();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
