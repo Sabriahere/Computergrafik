@@ -35,7 +35,6 @@ public class Exercise7 {
     int[] pixels = new int[width * height];
 
     public void render2DTriangles() {
-        root = initScene();
         JFrame frame = new JFrame();
         JPanel panel = new JPanel() {
             @Override
@@ -64,10 +63,12 @@ public class Exercise7 {
         Arrays.fill(zBuffer, 1.0f);
         Arrays.fill(pixels, 0xFF000000);
 
-        angle += 0.01f;
+        angle += 0.03f;
         if (angle > Math.PI * 2) {
             angle -= (float) (Math.PI * 2);
         }
+
+        root = initScene();
 
         Matrix4x4 view = createV();
         Matrix4x4 proj = createP();
@@ -163,8 +164,14 @@ public class Exercise7 {
     public void rasterization(Vector2 A, Vector2 B, Vector2 C, Vertex ap, Vertex bp, Vertex cp) {
         float u, v, w;
 
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
+        // Axis-aligned bounding box of the triangle (AABB) to make it faster
+        int minX = (int) Math.max(0, Math.floor(Math.min(A.x(), Math.min(B.x(), C.x()))));
+        int maxX = (int) Math.min(width - 1, Math.ceil(Math.max(A.x(), Math.max(B.x(), C.x()))));
+        int minY = (int) Math.max(0, Math.floor(Math.min(A.y(), Math.min(B.y(), C.y()))));
+        int maxY = (int) Math.min(height - 1, Math.ceil(Math.max(A.y(), Math.max(B.y(), C.y()))));
+
+        for (int y = minY; y < maxY; y++) {
+            for (int x = minX; x < maxX; x++) {
 
                 List<Float> uvList = calculateUV(x + 0.5, y + 0.5, A, B, C); // + 0.5 for some smoother edges
                 if (uvList == null) {
@@ -181,7 +188,7 @@ public class Exercise7 {
                     // Z-Buffer
                     int index = y * width + x;
                     float z = q.position().z();
-                    float zMod = (z + 1.0f) * 0.5f;//[0,1]: near=0, far=1 instead if formula from class with zNear and zFar
+                    float zMod = (z + 1.0f) * 0.5f;//[0,1]: near=0, far=1 instead if formula from class with zNear and zFar because im doing this after interpolation
 
                     if (zMod < zBuffer[index]) {
                         zBuffer[index] = zMod;
@@ -265,7 +272,7 @@ public class Exercise7 {
                 new Vector3(1, 0, 1),
                 new Vector3(0, 1, 1));
         SceneGraphNode cubeNode2 =
-                new SceneGraphNode(cubeMesh2, Matrix4x4.createTranslation(-3.001f, 0, 0));
+                new SceneGraphNode(cubeMesh2, Matrix4x4.createTranslation(-3.001f, 0, 0).multiply(Matrix4x4.createRotationX(angle)));
 
         // Cube 3
         Mesh cubeMesh3 = Mesh.createCube(
