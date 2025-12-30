@@ -1,3 +1,4 @@
+import ExerciseHardwareAcceleration.Exercise10;
 import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
 import ExerciseSoftwareRendering.Exercise6;
@@ -46,7 +47,10 @@ public class Main {
 
         //Exercise 8
         Exercise8 ex8 = new Exercise8();
-        ex8.render2DTriangles();
+        //ex8.render2DTriangles();
+
+        //TODO
+        Exercise10 ex10 = new Exercise10();
 
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
