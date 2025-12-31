@@ -1,20 +1,26 @@
 package ExerciseHardwareAcceleration;
 
+import Mesh.*;
+import Mesh.Vector3;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GLDebugMessageCallback;
 
-import static org.lwjgl.opengl.GL.*;
+import static org.lwjgl.opengl.GL.createCapabilities;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 
-import JavaVectors.Matrix4x4;
-
 // add the .jar files as a library to the project not with maven
 
 public class OpenGL {
+    static final int WIDTH = 720;
+    static final int HEIGHT = 480;
+    static final float zNear = 0.1f;
+    static final float zFar = 100.0f;
+    static final Vector3 cameraPos = new Vector3(0, 0, -6);
+
 
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
@@ -29,7 +35,7 @@ public class OpenGL {
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_DEBUG_CONTEXT, GLFW.GLFW_TRUE);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
-        var hWindow = GLFW.glfwCreateWindow(720, 480, "ComGr", 0, 0);
+        var hWindow = GLFW.glfwCreateWindow(WIDTH, HEIGHT, "ComGr", 0, 0);
         GLFW.glfwSetWindowSizeCallback(hWindow, (window, width, height) -> {
             var w = new int[1];
             var h = new int[1];
@@ -56,10 +62,10 @@ public class OpenGL {
         }
         glEnable(GL_FRAMEBUFFER_SRGB);
         glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
-        // glClearDepth(1);
-        // glDisable(GL_DEPTH_TEST);
-        // glDepthFunc(GL_LESS);
-        // glDisable(GL_CULL_FACE);
+        glClearDepth(1.0);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glDisable(GL_CULL_FACE);
 
         // load, compile and link shaders
         // see https://www.khronos.org/opengl/wiki/Vertex_Shader
@@ -79,13 +85,11 @@ public class OpenGL {
                 out vec3 fromVertexShaderToFragmentShader;
                 in vec3 inPos;
                 in vec3 inColor;
-                            
-                in float inTimeOffset;
-                                
+                                                            
                 void main()
                 {
-                    float t = inTime + inTimeOffset;
-                    gl_Position = vec4(inPos, 1.0) + vec4(sin(t) * 0.5, cos(t) * 0.5, 0.0, 0.0);
+                    gl_Position = inMatrix * vec4(inPos, 1.0);
+                   
                     fromVertexShaderToFragmentShader = inColor;
                 }
                                 
@@ -133,42 +137,36 @@ public class OpenGL {
             throw new Exception(glGetProgramInfoLog(hProgram));
         }
 
+        Mesh cubeMesh = Mesh.createCube(
+                new Vector3(1, 0, 0),
+                new Vector3(0, 1, 0),
+                new Vector3(0, 0, 1),
+                new Vector3(1, 1, 0),
+                new Vector3(1, 0, 1),
+                new Vector3(0, 1, 1));
+
+        float[] triangleVertices = new float[cubeMesh.vertices.size() * 3];
+        int v = 0;
+        for (var vert : cubeMesh.vertices) {
+            triangleVertices[v++] = vert.position().x();
+            triangleVertices[v++] = vert.position().y();
+            triangleVertices[v++] = vert.position().z();
+        }
+
         // upload model vertices to a vbo
-        //var triangleVertices = new float[]{0.0f, -0.5f, 0.0f, 0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f};
-        var triangleVertices = new float[]{
-                // Rect A (v0..v3)
-                -0.5f, -0.5f, 0.0f,   // 0
-                0.5f, -0.5f, 0.0f,   // 1
-                0.5f, 0.5f, 0.0f,   // 2
-                -0.5f, 0.5f, 0.0f, // 3
-
-                // Rect B (v4..v7) shifted inward
-                -0.5f, -0.5f, 0.0f,   // 4
-                0.5f, -0.5f, 0.0f,   // 5
-                0.5f, 0.5f, 0.0f,   // 6
-                -0.5f, 0.5f, 0.0f, // 7
-        };
-
-
         var vboTriangleVertices = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vboTriangleVertices);
         glBufferData(GL_ARRAY_BUFFER, triangleVertices, GL_STATIC_DRAW);
 
         // upload model colors to a vbo
-        var triangleColors = new float[]{
-                // Rect A
-                1.0f, 0.0f, 0.0f,  // 0 bottom-left  = red
-                0.0f, 1.0f, 0.0f,  // 1 bottom-right = green
-                1.0f, 0.0f, 0.0f,  // 2 top-right    = red
-                0.0f, 0.0f, 1.0f,  // 3 top-left     = blue
+        float[] triangleColors = new float[cubeMesh.vertices.size() * 3];
+        int c = 0;
 
-                // Rect B (same scheme)
-                1.0f, 0.0f, 0.0f,  // 4
-                0.0f, 1.0f, 0.0f,  // 5
-                1.0f, 0.0f, 0.0f,  // 6
-                0.0f, 0.0f, 1.0f   // 7
-        };
-
+        for (var vert : cubeMesh.vertices) {
+            triangleColors[c++] = vert.color().x();
+            triangleColors[c++] = vert.color().y();
+            triangleColors[c++] = vert.color().z();
+        }
 
         var vboTriangleColors = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vboTriangleColors);
@@ -176,25 +174,18 @@ public class OpenGL {
 
         // upload model indices to a vbo (vertex buffer object, actual data in gpu)
         //var triangleIndices = new int[]{0, 1, 2};
-        var triangleIndices = new int[]{
-                // Rect A (0..3)
-                0, 1, 2, 0, 2, 3,
+        int[] triangleIndices = new int[cubeMesh.triangles.size() * 3];
+        int i = 0;
 
-                // Rect B (4..7)
-                4, 5, 6, 4, 6, 7
-        };
+        for (var tri : cubeMesh.triangles) {
+            triangleIndices[i++] = tri.a();
+            triangleIndices[i++] = tri.b();
+            triangleIndices[i++] = tri.c();
+        }
+
         var vboTriangleIndices = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices, GL_STATIC_DRAW);
-
-        var triangleTimeOffsets = new float[]{
-                0.0f, 0.0f, 0.0f, 0.0f,  // rect A vertices
-                1.0f, 1.0f, 1.0f, 1.0f   // rect B vertices (phase shift +1)
-        };
-
-        var vboTriangleTimeOffsets = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleTimeOffsets);
-        glBufferData(GL_ARRAY_BUFFER, triangleTimeOffsets, GL_STATIC_DRAW);
 
 
         // set up a vao (vertex array objects, where each in variable is read from)
@@ -207,13 +198,6 @@ public class OpenGL {
             glEnableVertexAttribArray(colorAttribIndex);
             glBindBuffer(GL_ARRAY_BUFFER, vboTriangleColors);
             glVertexAttribPointer(colorAttribIndex, 3, GL_FLOAT, false, 0, 0L);
-        }
-
-        var timeOffsetAttribIndex = glGetAttribLocation(hProgram, "inTimeOffset");
-        if (timeOffsetAttribIndex != -1) {
-            glEnableVertexAttribArray(timeOffsetAttribIndex);
-            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleTimeOffsets);
-            glVertexAttribPointer(timeOffsetAttribIndex, 1, GL_FLOAT, false, 0, 0L);
         }
 
         if (posAttribIndex != -1) {
@@ -239,16 +223,26 @@ public class OpenGL {
             glUseProgram(hProgram);
 
             // set uniform values
-            glUniform1f(glGetUniformLocation(hProgram, "inTime"), (float) (System.currentTimeMillis() - startTime) * 0.001f);
+            float time = (float) (System.currentTimeMillis() - startTime) * 0.001f;
+            glUniform1f(glGetUniformLocation(hProgram, "inTime"), time);
 
-            // TODO: add MVP
-            var someMatrix = Matrix4x4.IDENTITY;
-            glUniformMatrix4fv(glGetUniformLocation(hProgram, "inMatrix"), false, someMatrix.toArray());
-
-            // render our model
             glBindVertexArray(vaoTriangle);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
-            glDrawElements(GL_TRIANGLES, triangleIndices.length, GL_UNSIGNED_INT, 0);
+
+            int uMatrix = glGetUniformLocation(hProgram, "inMatrix");
+
+            Vector3[] cubePos = new Vector3[]{
+                    new Vector3(-3.0f, 0.0f, 0.0f),
+                    new Vector3(0.0f, -3.0f, 0.0f),
+                    new Vector3(3.0f, 0.0f, 0.0f),
+                    new Vector3(0.0f, 3.0f, 0.0f),
+            };
+
+            for (int k = 0; k < 4; k++) {
+                Matrix4x4 mvp = createMVP(time, cubePos[k], k * 3.0f);
+                glUniformMatrix4fv(uMatrix, false, mvp.toArray());
+                glDrawElements(GL_TRIANGLES, triangleIndices.length, GL_UNSIGNED_INT, 0);
+            }
 
             // display
             GLFW.glfwSwapBuffers(hWindow);
@@ -263,4 +257,28 @@ public class OpenGL {
         GLFW.glfwDestroyWindow(hWindow);
         GLFW.glfwTerminate();
     }
+
+    private static Matrix4x4 createMVP(float time, Vector3 pos, float phase) {
+        Matrix4x4 M =
+                Matrix4x4.createRotationY(time + phase)
+                        .multiply(Matrix4x4.createRotationX(time * 0.7f + phase));
+        Matrix4x4 T = Matrix4x4.createTranslation(pos.x(), pos.y(), pos.z());
+        M = T.multiply(M);
+
+        Matrix4x4 V = Matrix4x4.createTranslation(0.0f, 0.0f, -6.0f);
+
+        float aspect = (float) WIDTH / (float) HEIGHT;
+        float fov = (float) Math.toRadians(60.0f);
+        float f = 1.0f / (float) Math.tan(fov * 0.5f);
+        Matrix4x4 P = new Matrix4x4(
+                f / aspect, 0, 0, 0,
+                0, f, 0, 0,
+                0, 0, (zFar + zNear) / (zNear - zFar), -1,
+                0, 0, (2 * zFar * zNear) / (zNear - zFar), 0
+        );
+
+        return M.multiply(V).multiply(P);
+    }
+
+
 }
