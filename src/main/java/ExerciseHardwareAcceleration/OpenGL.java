@@ -145,9 +145,16 @@ public class OpenGL {
                 new Vector3(1, 0, 1),
                 new Vector3(0, 1, 1));
 
-        float[] triangleVertices = new float[cubeMesh.vertices.size() * 3];
+        Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
+
+        float[] triangleVertices = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
         int v = 0;
         for (var vert : cubeMesh.vertices) {
+            triangleVertices[v++] = vert.position().x();
+            triangleVertices[v++] = vert.position().y();
+            triangleVertices[v++] = vert.position().z();
+        }
+        for (var vert : sphereMesh.vertices) {
             triangleVertices[v++] = vert.position().x();
             triangleVertices[v++] = vert.position().y();
             triangleVertices[v++] = vert.position().z();
@@ -159,10 +166,15 @@ public class OpenGL {
         glBufferData(GL_ARRAY_BUFFER, triangleVertices, GL_STATIC_DRAW);
 
         // upload model colors to a vbo
-        float[] triangleColors = new float[cubeMesh.vertices.size() * 3];
+        float[] triangleColors = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
         int c = 0;
 
         for (var vert : cubeMesh.vertices) {
+            triangleColors[c++] = vert.color().x();
+            triangleColors[c++] = vert.color().y();
+            triangleColors[c++] = vert.color().z();
+        }
+        for (var vert : sphereMesh.vertices) {
             triangleColors[c++] = vert.color().x();
             triangleColors[c++] = vert.color().y();
             triangleColors[c++] = vert.color().z();
@@ -174,14 +186,30 @@ public class OpenGL {
 
         // upload model indices to a vbo (vertex buffer object, actual data in gpu)
         //var triangleIndices = new int[]{0, 1, 2};
-        int[] triangleIndices = new int[cubeMesh.triangles.size() * 3];
+        int cubeVertCount = cubeMesh.vertices.size();
+        int cubeIndexCount = cubeMesh.triangles.size() * 3;
+
+        int sphereIndexCount = sphereMesh.triangles.size() * 3;
+
+// correct total index array size
+        int[] triangleIndices = new int[cubeIndexCount + sphereIndexCount];
+
         int i = 0;
 
+// cube indices first
         for (var tri : cubeMesh.triangles) {
             triangleIndices[i++] = tri.a();
             triangleIndices[i++] = tri.b();
             triangleIndices[i++] = tri.c();
         }
+
+// sphere indices appended WITH OFFSET
+        for (var tri : sphereMesh.triangles) {
+            triangleIndices[i++] = tri.a() + cubeVertCount;
+            triangleIndices[i++] = tri.b() + cubeVertCount;
+            triangleIndices[i++] = tri.c() + cubeVertCount;
+        }
+
 
         var vboTriangleIndices = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
@@ -238,11 +266,19 @@ public class OpenGL {
                     new Vector3(0.0f, 3.0f, 0.0f),
             };
 
+
             for (int k = 0; k < 4; k++) {
                 Matrix4x4 mvp = createMVP(time, cubePos[k], k * 3.0f);
                 glUniformMatrix4fv(uMatrix, false, mvp.toArray());
-                glDrawElements(GL_TRIANGLES, triangleIndices.length, GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLES, cubeIndexCount, GL_UNSIGNED_INT, 0L);
             }
+
+            Vector3 spherePos = new Vector3(0.0f, 0.0f, 0.0f);
+            Matrix4x4 mvp = createMVP(time, spherePos, 3.0f);
+            glUniformMatrix4fv(uMatrix, false, mvp.toArray());
+            long sphereIndexOffsetBytes = (long) cubeIndexCount * Integer.BYTES;
+            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, sphereIndexOffsetBytes);
+
 
             // display
             GLFW.glfwSwapBuffers(hWindow);
@@ -265,7 +301,7 @@ public class OpenGL {
         Matrix4x4 T = Matrix4x4.createTranslation(pos.x(), pos.y(), pos.z());
         M = T.multiply(M);
 
-        Matrix4x4 V = Matrix4x4.createTranslation(0.0f, 0.0f, -6.0f);
+        Matrix4x4 V = Matrix4x4.createTranslation(0.0f, 0.0f, -10.0f);
 
         float aspect = (float) WIDTH / (float) HEIGHT;
         float fov = (float) Math.toRadians(60.0f);
