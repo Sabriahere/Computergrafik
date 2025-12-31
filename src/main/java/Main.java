@@ -1,4 +1,3 @@
-import ExerciseHardwareAcceleration.Exercise10;
 import ExerciseRayTracing.*;
 import ExerciseSoftwareRendering.Exercise5;
 import ExerciseSoftwareRendering.Exercise6;
