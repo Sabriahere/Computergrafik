@@ -49,9 +49,6 @@ public class Main {
         Exercise8 ex8 = new Exercise8();
         //ex8.render2DTriangles();
 
-        //TODO
-        Exercise10 ex10 = new Exercise10();
-
         Instant end = Instant.now();
         Duration elapsed = Duration.between(start, end);
 
