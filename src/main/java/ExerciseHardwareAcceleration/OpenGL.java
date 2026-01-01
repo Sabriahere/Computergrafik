@@ -5,6 +5,7 @@ import Mesh.Vector3;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLDebugMessageCallback;
 
@@ -16,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
 
+import static org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT;
+import static org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT;
 import static org.lwjgl.opengl.GL.createCapabilities;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
@@ -390,7 +393,13 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
         int hTextures = glGenTextures();
         glBindTexture(GL_TEXTURE_2D, hTextures);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); //if one pixel covers multiple screen pixels how is the color picked
+
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //if many pixels map to one screen pixel how is the color picked
+        if (GL.getCapabilities().GL_EXT_texture_filter_anisotropic) { //anisotropic filtering activated if available
+            float maxAniso = glGetFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
+        }
+
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1); //how is pixel data laid out in cpu memory when uploading to gpu, no padding bytes between rows of image
         try {
             uploadTextureImage(Objects.requireNonNull(OpenGL.class.getResourceAsStream(resourcePath)));
