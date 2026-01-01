@@ -158,11 +158,11 @@ public class OpenGL {
                     vec3 V = normalize(uCameraPos - vWorldPos);
 
                     // Diffuse
-                    float diff = max(dot(N, L), 0.0);
+                    float diff = max(dot(N, L), 0.0) * 0.3;
 
                     // Specular (Phong)
                     vec3 R = reflect(-L, N);
-                    float spec = pow(max(dot(V, R), 0.0), 64.0); // shininess = 64
+                    float spec = pow(max(dot(V, R), 0.0), 64.0);
 
                     vec3 ambient = 0.1 * albedo;
                     vec3 diffuse = diff * albedo;
@@ -389,7 +389,7 @@ public class OpenGL {
             glUniform1i(loc, tiuIndex);
 
             // set uniform values
-            float time = (float) (System.currentTimeMillis() - startTime) * 0.001f;
+            float time = (float) (System.currentTimeMillis() - startTime) * 0.0007f;
             glUniform1f(glGetUniformLocation(hProgram, "inTime"), time);
 
             glBindVertexArray(vaoTriangle);
