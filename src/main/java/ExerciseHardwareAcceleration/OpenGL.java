@@ -13,8 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Objects;
 
 import static org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT;
@@ -33,8 +31,6 @@ public class OpenGL {
     static final int HEIGHT = 480;
     static final float zNear = 0.1f;
     static final float zFar = 100.0f;
-    static final Vector3 cameraPos = new Vector3(0, 0, -6);
-
 
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
@@ -85,7 +81,7 @@ public class OpenGL {
         // see https://www.khronos.org/opengl/wiki/Vertex_Shader
 
         /*
-        inTime & inMatrix: Uniform (parameter per draw call)
+        inTime: Uniform (parameter per draw call)
         fromVertexShaderToFragmentShader: Output to fragment shader
         inPos: Input value per vertex
         inColor: per vertex color attribute (from color VBO)
@@ -94,21 +90,32 @@ public class OpenGL {
         var VertexShaderSource = """
                 #version 400 core
 
-                uniform float inTime;
-                uniform mat4 inMatrix;
+                uniform mat4 uModel;
+                uniform mat4 uView;
+                uniform mat4 uProj;
 
                 in vec3 inPos;
                 in vec3 inColor;
                 in vec2 inUV;
+                in vec3 inNormal;
 
-                out vec3 fromVertexShaderToFragmentShader;
+                out vec3 vColor;
                 out vec2 vUV;
+                out vec3 vWorldPos;
+                out vec3 vWorldNormal;
 
                 void main()
                 {
-                    gl_Position = inMatrix * vec4(inPos, 1.0);
-                    fromVertexShaderToFragmentShader = inColor;
+                    vec4 worldPos = uModel * vec4(inPos, 1.0);
+                    vWorldPos = worldPos.xyz;
+
+                    // correct normal transform for rotations (ok for your current rotation-only model)
+                    vWorldNormal = normalize(mat3(uModel) * inNormal);
+
+                    vColor = inColor;
                     vUV = inUV;
+
+                    gl_Position = uProj * uView * worldPos;
                 }
                 """;
 
@@ -130,24 +137,46 @@ public class OpenGL {
         var FragmentShaderSource = """
                 #version 400 core
 
-                in vec3 fromVertexShaderToFragmentShader;
+                in vec3 vColor;
                 in vec2 vUV;
+                in vec3 vWorldPos;
+                in vec3 vWorldNormal;
 
                 uniform sampler2D chessboardTexture;
+
+                uniform vec3 uLightPos;
+                uniform vec3 uCameraPos;
 
                 out vec4 outColor;
 
                 void main()
                 {
-                    vec3 tex = texture(chessboardTexture, vUV).rgb;
-                    outColor = vec4(tex * fromVertexShaderToFragmentShader, 1.0);
+                    vec3 albedo = texture(chessboardTexture, vUV).rgb;
+
+                    vec3 N = normalize(vWorldNormal);
+                    vec3 L = normalize(uLightPos - vWorldPos);
+                    vec3 V = normalize(uCameraPos - vWorldPos);
+
+                    // Diffuse
+                    float diff = max(dot(N, L), 0.0);
+
+                    // Specular (Phong)
+                    vec3 R = reflect(-L, N);
+                    float spec = pow(max(dot(V, R), 0.0), 64.0); // shininess = 64
+
+                    vec3 ambient = 0.1 * albedo;
+                    vec3 diffuse = diff * albedo;
+                    vec3 specular = spec * vec3(1.0);
+
+                    vec3 lit = ambient + diffuse + specular;
+
+                    // Optional: keep your per-face tint
+                    lit *= vColor;
+
+                    outColor = vec4(lit, 1.0);
                 }
                 """;
 
-/*
-float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
-                    outColor = vec4(fromVertexShaderToFragmentShader * s, 1.0);
- */
         var hFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(hFragmentShader, FragmentShaderSource);
         glCompileShader(hFragmentShader);
@@ -163,6 +192,13 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
         if (glGetProgrami(hProgram, GL_LINK_STATUS) != GL_TRUE) {
             throw new Exception(glGetProgramInfoLog(hProgram));
         }
+
+        int uModel = glGetUniformLocation(hProgram, "uModel");
+        int uView = glGetUniformLocation(hProgram, "uView");
+        int uProj = glGetUniformLocation(hProgram, "uProj");
+
+        int uLightPos = glGetUniformLocation(hProgram, "uLightPos");
+        int uCameraPos = glGetUniformLocation(hProgram, "uCameraPos");
 
         Mesh cubeMesh = Mesh.createCube(
                 new Vector3(1, 0, 0),
@@ -207,11 +243,9 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
             triangleUVs[t++] = vert.texCoord().y();
         }
 
-
         int vboTriangleUVs = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
         glBufferData(GL_ARRAY_BUFFER, triangleUVs, GL_STATIC_DRAW);
-
 
         // upload model colors to a vbo
         float[] triangleColors = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
@@ -258,21 +292,43 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
             triangleIndices[i++] = tri.c() + cubeVertCount;
         }
 
+        float[] triangleNormals = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
+        int n = 0;
+
+        for (var vert : cubeMesh.vertices) {
+            triangleNormals[n++] = vert.normal().x();
+            triangleNormals[n++] = vert.normal().y();
+            triangleNormals[n++] = vert.normal().z();
+        }
+        for (var vert : sphereMesh.vertices) {
+            triangleNormals[n++] = vert.normal().x();
+            triangleNormals[n++] = vert.normal().y();
+            triangleNormals[n++] = vert.normal().z();
+        }
+
+        int vboTriangleNormals = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
+        glBufferData(GL_ARRAY_BUFFER, triangleNormals, GL_STATIC_DRAW);
 
         // TODO: add textures
         int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
         int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
 
-
         var vboTriangleIndices = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices, GL_STATIC_DRAW);
-
 
         // set up a vao (vertex array objects, where each in variable is read from)
         var vaoTriangle = glGenVertexArrays();
         glBindVertexArray(vaoTriangle);
         var posAttribIndex = glGetAttribLocation(hProgram, "inPos");
+
+        int normalAttribIndex = glGetAttribLocation(hProgram, "inNormal");
+        if (normalAttribIndex != -1) {
+            glEnableVertexAttribArray(normalAttribIndex);
+            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
+            glVertexAttribPointer(normalAttribIndex, 3, GL_FLOAT, false, 0, 0L);
+        }
 
         int uvAttribIndex = glGetAttribLocation(hProgram, "inUV");
         if (uvAttribIndex != -1) {
@@ -280,7 +336,6 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
             glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
             glVertexAttribPointer(uvAttribIndex, 2, GL_FLOAT, false, 0, 0L);
         }
-
 
         var colorAttribIndex = glGetAttribLocation(hProgram, "inColor");
         if (colorAttribIndex != -1) {
@@ -311,6 +366,18 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
             // switch to our shader
             glUseProgram(hProgram);
 
+            glUseProgram(hProgram);
+
+            // B) set per-frame uniforms
+            Matrix4x4 V = createView();
+            Matrix4x4 P = createProj();
+            glUniformMatrix4fv(uView, false, V.toArray());
+            glUniformMatrix4fv(uProj, false, P.toArray());
+
+            // world-space light and camera position (match the V you used)
+            glUniform3f(uLightPos, 0f, 0f, 20.0f);
+            glUniform3f(uCameraPos, 0.0f, 0.0f, 10.0f);
+
             //TODO: setup texture
             int tiuIndex = 1;
             glActiveTexture(GL_TEXTURE0 + tiuIndex);
@@ -328,8 +395,6 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
             glBindVertexArray(vaoTriangle);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
 
-            int uMatrix = glGetUniformLocation(hProgram, "inMatrix");
-
             Vector3[] cubePos = new Vector3[]{
                     new Vector3(-3.0f, 0.0f, 0.0f),
                     new Vector3(0.0f, -3.0f, 0.0f),
@@ -337,21 +402,20 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
                     new Vector3(0.0f, 3.0f, 0.0f),
             };
 
-
             glBindTexture(GL_TEXTURE_2D, hTexture1);
             for (int k = 0; k < 4; k++) {
-                Matrix4x4 mvp = createMVP(time, cubePos[k], k * 3.0f);
-                glUniformMatrix4fv(uMatrix, false, mvp.toArray());
+                Matrix4x4 M = createModel(time, cubePos[k], k * 3.0f);
+                glUniformMatrix4fv(uModel, false, M.toArray());
                 glDrawElements(GL_TRIANGLES, cubeIndexCount, GL_UNSIGNED_INT, 0L);
             }
 
-            glBindTexture(GL_TEXTURE_2D, hTexture2);
             Vector3 spherePos = new Vector3(0.0f, 0.0f, 0.0f);
-            Matrix4x4 mvp = createMVP(time, spherePos, 3.0f);
-            glUniformMatrix4fv(uMatrix, false, mvp.toArray());
             long sphereIndexOffsetBytes = (long) cubeIndexCount * Integer.BYTES;
-            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, sphereIndexOffsetBytes);
 
+            glBindTexture(GL_TEXTURE_2D, hTexture2);
+            Matrix4x4 sphereM = createModel(time, spherePos, 3.0f);
+            glUniformMatrix4fv(uModel, false, sphereM.toArray());
+            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, sphereIndexOffsetBytes);
 
             // display
             GLFW.glfwSwapBuffers(hWindow);
@@ -367,26 +431,27 @@ float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
         GLFW.glfwTerminate();
     }
 
-    private static Matrix4x4 createMVP(float time, Vector3 pos, float phase) {
-        Matrix4x4 M =
-                Matrix4x4.createRotationY(time + phase)
-                        .multiply(Matrix4x4.createRotationX(time * 0.7f + phase));
+    private static Matrix4x4 createModel(float time, Vector3 pos, float phase) {
+        Matrix4x4 R = Matrix4x4.createRotationY(time + phase).multiply(Matrix4x4.createRotationX(time * 0.7f + phase));
         Matrix4x4 T = Matrix4x4.createTranslation(pos.x(), pos.y(), pos.z());
-        M = T.multiply(M);
+        return T.multiply(R);
+    }
 
-        Matrix4x4 V = Matrix4x4.createTranslation(0.0f, 0.0f, -10.0f);
+    private static Matrix4x4 createView() {
+        return Matrix4x4.createTranslation(0.0f, 0.0f, -10.0f);
+    }
 
+    private static Matrix4x4 createProj() {
         float aspect = (float) WIDTH / (float) HEIGHT;
         float fov = (float) Math.toRadians(60.0f);
         float f = 1.0f / (float) Math.tan(fov * 0.5f);
-        Matrix4x4 P = new Matrix4x4(
+
+        return new Matrix4x4(
                 f / aspect, 0, 0, 0,
                 0, f, 0, 0,
                 0, 0, (zFar + zNear) / (zNear - zFar), -1,
                 0, 0, (2 * zFar * zNear) / (zNear - zFar), 0
         );
-
-        return M.multiply(V).multiply(P);
     }
 
     private static int addTextureObject(String resourcePath) {
