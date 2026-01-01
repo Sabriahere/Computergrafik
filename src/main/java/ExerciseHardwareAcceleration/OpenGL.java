@@ -2,15 +2,26 @@ package ExerciseHardwareAcceleration;
 
 import Mesh.*;
 import Mesh.Vector3;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLDebugMessageCallback;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Objects;
 
 import static org.lwjgl.opengl.GL.createCapabilities;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
+import static org.lwjgl.stb.STBImage.*;
 
 // add the .jar files as a library to the project not with maven
 
@@ -48,17 +59,17 @@ public class OpenGL {
 
         // set up opengl
         if (GLFW.glfwExtensionSupported("GL_KHR_debug")) {
-            org.lwjgl.opengl.GL43.glDebugMessageCallback(
+            GL43.glDebugMessageCallback(
                     GLDebugMessageCallback.create((source, type, id, severity, length, message, userParam) -> {
                         var msg = GLDebugMessageCallback.getMessage(length, message);
-                        if (type == org.lwjgl.opengl.GL43.GL_DEBUG_TYPE_ERROR) {
+                        if (type == GL43.GL_DEBUG_TYPE_ERROR) {
                             throw new RuntimeException(msg);
                         } else {
                             System.out.println(msg);
                         }
                     }), 0);
-            glEnable(org.lwjgl.opengl.GL43.GL_DEBUG_OUTPUT);
-            glEnable(org.lwjgl.opengl.GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            glEnable(GL43.GL_DEBUG_OUTPUT);
+            glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
         }
         glEnable(GL_FRAMEBUFFER_SRGB);
         glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
@@ -79,21 +90,25 @@ public class OpenGL {
          */
         var VertexShaderSource = """
                 #version 400 core
-                            
+
                 uniform float inTime;
                 uniform mat4 inMatrix;
-                out vec3 fromVertexShaderToFragmentShader;
+
                 in vec3 inPos;
                 in vec3 inColor;
-                                                            
+                in vec2 inUV;
+
+                out vec3 fromVertexShaderToFragmentShader;
+                out vec2 vUV;
+
                 void main()
                 {
                     gl_Position = inMatrix * vec4(inPos, 1.0);
-                   
                     fromVertexShaderToFragmentShader = inColor;
+                    vUV = inUV;
                 }
-                                
                 """;
+
         var hVertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(hVertexShader, VertexShaderSource);
         glCompileShader(hVertexShader);
@@ -107,20 +122,29 @@ public class OpenGL {
         fromVertexShaderToFragmentShader: user-defined output of the vertex shader,
         interpolated per fragment and used as input in the fragment shader
         outColor: user-defined fragment shader output variable
+        chessboardTexture: TODO
          */
         var FragmentShaderSource = """
                 #version 400 core
 
                 in vec3 fromVertexShaderToFragmentShader;
+                in vec2 vUV;
+
+                uniform sampler2D chessboardTexture;
+
                 out vec4 outColor;
 
                 void main()
                 {
-                    float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
-                    outColor = vec4(fromVertexShaderToFragmentShader * s, 1.0);
+                    vec3 tex = texture(chessboardTexture, vUV).rgb;
+                    outColor = vec4(tex * fromVertexShaderToFragmentShader, 1.0);
                 }
                 """;
 
+/*
+float s = 0.9 + 0.1 * sin(gl_FragCoord.x * 0.05);
+                    outColor = vec4(fromVertexShaderToFragmentShader * s, 1.0);
+ */
         var hFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(hFragmentShader, FragmentShaderSource);
         glCompileShader(hFragmentShader);
@@ -145,7 +169,7 @@ public class OpenGL {
                 new Vector3(1, 0, 1),
                 new Vector3(0, 1, 1));
 
-        Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 0, 0));
+        Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 1, 1));
 
         float[] triangleVertices = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
         int v = 0;
@@ -164,6 +188,27 @@ public class OpenGL {
         var vboTriangleVertices = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vboTriangleVertices);
         glBufferData(GL_ARRAY_BUFFER, triangleVertices, GL_STATIC_DRAW);
+
+        float[] triangleUVs = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 2];
+        int t = 0;
+
+        // cube UVs from mesh
+        for (var vert : cubeMesh.vertices) {
+            triangleUVs[t++] = vert.texCoord().x();
+            triangleUVs[t++] = vert.texCoord().y();
+        }
+
+        // sphere UVs from mesh
+        for (var vert : sphereMesh.vertices) {
+            triangleUVs[t++] = vert.texCoord().x();
+            triangleUVs[t++] = vert.texCoord().y();
+        }
+
+
+        int vboTriangleUVs = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
+        glBufferData(GL_ARRAY_BUFFER, triangleUVs, GL_STATIC_DRAW);
+
 
         // upload model colors to a vbo
         float[] triangleColors = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
@@ -191,24 +236,29 @@ public class OpenGL {
 
         int sphereIndexCount = sphereMesh.triangles.size() * 3;
 
-// correct total index array size
+        // correct total index array size
         int[] triangleIndices = new int[cubeIndexCount + sphereIndexCount];
 
         int i = 0;
 
-// cube indices first
+        // cube indices first
         for (var tri : cubeMesh.triangles) {
             triangleIndices[i++] = tri.a();
             triangleIndices[i++] = tri.b();
             triangleIndices[i++] = tri.c();
         }
 
-// sphere indices appended WITH OFFSET
+        // sphere indices appended WITH OFFSET
         for (var tri : sphereMesh.triangles) {
             triangleIndices[i++] = tri.a() + cubeVertCount;
             triangleIndices[i++] = tri.b() + cubeVertCount;
             triangleIndices[i++] = tri.c() + cubeVertCount;
         }
+
+
+        // TODO: add textures
+        int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
+        int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
 
 
         var vboTriangleIndices = glGenBuffers();
@@ -220,6 +270,14 @@ public class OpenGL {
         var vaoTriangle = glGenVertexArrays();
         glBindVertexArray(vaoTriangle);
         var posAttribIndex = glGetAttribLocation(hProgram, "inPos");
+
+        int uvAttribIndex = glGetAttribLocation(hProgram, "inUV");
+        if (uvAttribIndex != -1) {
+            glEnableVertexAttribArray(uvAttribIndex);
+            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
+            glVertexAttribPointer(uvAttribIndex, 2, GL_FLOAT, false, 0, 0L);
+        }
+
 
         var colorAttribIndex = glGetAttribLocation(hProgram, "inColor");
         if (colorAttribIndex != -1) {
@@ -250,6 +308,16 @@ public class OpenGL {
             // switch to our shader
             glUseProgram(hProgram);
 
+            //TODO: setup texture
+            int tiuIndex = 1;
+            glActiveTexture(GL_TEXTURE0 + tiuIndex);
+            glBindTexture(GL_TEXTURE_2D, hTexture1);
+            int loc = glGetUniformLocation(hProgram, "chessboardTexture");
+            if (loc == -1) {
+                throw new RuntimeException("Uniform chessboardTexture not found");
+            }
+            glUniform1i(loc, tiuIndex);
+
             // set uniform values
             float time = (float) (System.currentTimeMillis() - startTime) * 0.001f;
             glUniform1f(glGetUniformLocation(hProgram, "inTime"), time);
@@ -267,12 +335,14 @@ public class OpenGL {
             };
 
 
+            glBindTexture(GL_TEXTURE_2D, hTexture1);
             for (int k = 0; k < 4; k++) {
                 Matrix4x4 mvp = createMVP(time, cubePos[k], k * 3.0f);
                 glUniformMatrix4fv(uMatrix, false, mvp.toArray());
                 glDrawElements(GL_TRIANGLES, cubeIndexCount, GL_UNSIGNED_INT, 0L);
             }
 
+            glBindTexture(GL_TEXTURE_2D, hTexture2);
             Vector3 spherePos = new Vector3(0.0f, 0.0f, 0.0f);
             Matrix4x4 mvp = createMVP(time, spherePos, 3.0f);
             glUniformMatrix4fv(uMatrix, false, mvp.toArray());
@@ -316,5 +386,54 @@ public class OpenGL {
         return M.multiply(V).multiply(P);
     }
 
+    private static int addTextureObject(String resourcePath) {
+        int hTextures = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, hTextures);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); //if one pixel covers multiple screen pixels how is the color picked
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); //if many pixels map to one screen pixel how is the color picked
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); //how is pixel data laid out in cpu memory when uploading to gpu, no padding bytes between rows of image
+        try {
+            uploadTextureImage(Objects.requireNonNull(OpenGL.class.getResourceAsStream(resourcePath)));
+        } catch (IOException e) {
+            System.out.println("Failed to upload texture image: " + e.getMessage());
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return hTextures;
+    }
 
+    private static void uploadTextureImage(InputStream is) throws IOException {
+        // decode PNG -> raw RGB bytes
+        try (is) {
+            byte[] fileBytes = is.readAllBytes();
+
+            ByteBuffer fileBuffer = BufferUtils.createByteBuffer(fileBytes.length);
+            fileBuffer.put(fileBytes).flip();
+
+            IntBuffer w = BufferUtils.createIntBuffer(1);
+            IntBuffer h = BufferUtils.createIntBuffer(1);
+            IntBuffer comp = BufferUtils.createIntBuffer(1);
+
+            ByteBuffer pixelData = stbi_load_from_memory(fileBuffer, w, h, comp, 3);
+            if (pixelData == null) {
+                throw new RuntimeException(stbi_failure_reason());
+            }
+
+            int texWidth = w.get(0);
+            int texHeight = h.get(0);
+
+            glTexImage2D(
+                    GL_TEXTURE_2D,
+                    0,
+                    GL_SRGB8,
+                    texWidth,
+                    texHeight,
+                    0,
+                    GL_RGB,
+                    GL_UNSIGNED_BYTE,
+                    pixelData
+            ); //0 -> mipmap level, 0 is base image
+            glGenerateMipmap(GL_TEXTURE_2D);
+            stbi_image_free(pixelData);
+        }
+    }
 }
