@@ -24,11 +24,14 @@ import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.stb.STBImage.*;
 
+import java.util.Arrays;
+import java.util.Comparator; // optional if you use a lambda comparator
+
 // add the .jar files as a library to the project not with maven
 
 public class OpenGL {
-    static final int WIDTH = 720;
-    static final int HEIGHT = 480;
+    static final int WIDTH = 1920;
+    static final int HEIGHT = 1080;
     static final float zNear = 0.1f;
     static final float zFar = 100.0f;
 
@@ -71,17 +74,18 @@ public class OpenGL {
             glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
         }
         glEnable(GL_FRAMEBUFFER_SRGB);
-        glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+        glClearColor(0.005f, 0.005f, 0.005f, 0.0f);
         glClearDepth(1.0);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glDisable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         // load, compile and link shaders
         // see https://www.khronos.org/opengl/wiki/Vertex_Shader
 
         /*
-        inTime: Uniform (parameter per draw call)
         fromVertexShaderToFragmentShader: Output to fragment shader
         inPos: Input value per vertex
         inColor: per vertex color attribute (from color VBO)
@@ -132,7 +136,7 @@ public class OpenGL {
         fromVertexShaderToFragmentShader: user-defined output of the vertex shader,
         interpolated per fragment and used as input in the fragment shader
         outColor: user-defined fragment shader output variable
-        chessboardTexture: TODO
+        textures: TODO
          */
         var FragmentShaderSource = """
                 #version 400 core
@@ -142,7 +146,8 @@ public class OpenGL {
                 in vec3 vWorldPos;
                 in vec3 vWorldNormal;
 
-                uniform sampler2D chessboardTexture;
+                uniform sampler2D textures;
+                uniform float uAlpha;
 
                 uniform vec3 uLightPos;
                 uniform vec3 uCameraPos;
@@ -151,14 +156,19 @@ public class OpenGL {
 
                 void main()
                 {
-                    vec3 albedo = texture(chessboardTexture, vUV).rgb;
+                    vec4 tex = texture(textures, vUV);
+                    vec3 albedo = tex.rgb;
+                    float alpha = tex.a * uAlpha;
+
+                    if (alpha < 0.01)
+                        discard;
 
                     vec3 N = normalize(vWorldNormal);
                     vec3 L = normalize(uLightPos - vWorldPos);
                     vec3 V = normalize(uCameraPos - vWorldPos);
 
                     // Diffuse
-                    float diff = max(dot(N, L), 0.0) * 0.3;
+                    float diff = max(dot(N, L), 0.0);
 
                     // Specular (Phong)
                     vec3 R = reflect(-L, N);
@@ -170,10 +180,9 @@ public class OpenGL {
 
                     vec3 lit = ambient + diffuse + specular;
 
-                    // Optional: keep your per-face tint
                     lit *= vColor;
 
-                    outColor = vec4(lit, 1.0);
+                    outColor = vec4(lit, alpha);
                 }
                 """;
 
@@ -199,6 +208,7 @@ public class OpenGL {
 
         int uLightPos = glGetUniformLocation(hProgram, "uLightPos");
         int uCameraPos = glGetUniformLocation(hProgram, "uCameraPos");
+        int uAlpha = glGetUniformLocation(hProgram, "uAlpha");
 
         Mesh cubeMesh = Mesh.createCube(
                 new Vector3(1, 0, 0),
@@ -313,10 +323,18 @@ public class OpenGL {
         // TODO: add textures
         int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
         int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
+        int hTexture3 = addTextureObject("/ExerciseHardwareAcceleration/smoke2.png");
+        int hTexture4 = addTextureObject("/ExerciseHardwareAcceleration/Marble.png");
 
         var vboTriangleIndices = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices, GL_STATIC_DRAW);
+
+        // vbo for sorted transparent sphere
+        int vboSphereSorted = glGenBuffers();
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphereIndexCount * (long) Integer.BYTES, GL_DYNAMIC_DRAW);
+
 
         // set up a vao (vertex array objects, where each in variable is read from)
         var vaoTriangle = glGenVertexArrays();
@@ -359,13 +377,19 @@ public class OpenGL {
 
         // render loop
         var startTime = System.currentTimeMillis();
+
+        int sphereTriCount = sphereMesh.triangles.size();
+        int[] sphereSortedIndices = new int[sphereIndexCount]; // 3 * triCount
+        TriDepth[] triDepths = new TriDepth[sphereTriCount];
+        for (int ti = 0; ti < sphereTriCount; ti++) {
+            triDepths[ti] = new TriDepth(ti, 0f);
+        }
+
         while (!GLFW.glfwWindowShouldClose(hWindow)) {
             // clear screen and z-buffer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             // switch to our shader
-            glUseProgram(hProgram);
-
             glUseProgram(hProgram);
 
             // B) set per-frame uniforms
@@ -377,20 +401,20 @@ public class OpenGL {
             // world-space light and camera position (match the V you used)
             glUniform3f(uLightPos, 0f, 0f, 20.0f);
             glUniform3f(uCameraPos, 0.0f, 0.0f, 10.0f);
+            glUniform1f(uAlpha, 1.0f);
 
             //TODO: setup texture
             int tiuIndex = 1;
             glActiveTexture(GL_TEXTURE0 + tiuIndex);
             glBindTexture(GL_TEXTURE_2D, hTexture1);
-            int loc = glGetUniformLocation(hProgram, "chessboardTexture");
+            int loc = glGetUniformLocation(hProgram, "textures");
             if (loc == -1) {
-                throw new RuntimeException("Uniform chessboardTexture not found");
+                throw new RuntimeException("Uniform texture not found");
             }
             glUniform1i(loc, tiuIndex);
 
             // set uniform values
             float time = (float) (System.currentTimeMillis() - startTime) * 0.0007f;
-            glUniform1f(glGetUniformLocation(hProgram, "inTime"), time);
 
             glBindVertexArray(vaoTriangle);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
@@ -402,20 +426,41 @@ public class OpenGL {
                     new Vector3(0.0f, 3.0f, 0.0f),
             };
 
-            glBindTexture(GL_TEXTURE_2D, hTexture1);
             for (int k = 0; k < 4; k++) {
-                Matrix4x4 M = createModel(time, cubePos[k], k * 3.0f);
+                if (k % 2 == 0) {
+                    glBindTexture(GL_TEXTURE_2D, hTexture1);
+                } else {
+                    glBindTexture(GL_TEXTURE_2D, hTexture4);
+                }
+                Matrix4x4 M = createModel(time, cubePos[k], k * 3.0f, 1.0f);
                 glUniformMatrix4fv(uModel, false, M.toArray());
                 glDrawElements(GL_TRIANGLES, cubeIndexCount, GL_UNSIGNED_INT, 0L);
             }
 
+            // center sphere
             Vector3 spherePos = new Vector3(0.0f, 0.0f, 0.0f);
             long sphereIndexOffsetBytes = (long) cubeIndexCount * Integer.BYTES;
-
             glBindTexture(GL_TEXTURE_2D, hTexture2);
-            Matrix4x4 sphereM = createModel(time, spherePos, 3.0f);
+            Matrix4x4 sphereM = createModel(time, spherePos, 3.0f, 1.0f);
             glUniformMatrix4fv(uModel, false, sphereM.toArray());
             glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, sphereIndexOffsetBytes);
+
+            // glassy sphere
+            glDepthMask(false);
+            glUniform1f(uAlpha, 0.08f);
+            glBindTexture(GL_TEXTURE_2D, hTexture3);
+            Matrix4x4 glassM = createModel(time * 0.5f, spherePos, 1.0f, 4.5f);
+            glUniformMatrix4fv(uModel, false, glassM.toArray());
+
+            buildSortedSphereIndices(sphereMesh, glassM, V, cubeVertCount, triDepths, sphereSortedIndices);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sphereSortedIndices);
+            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, 0L);
+
+            // restore
+            glUniform1f(uAlpha, 1.0f);
+            glDepthMask(true);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
 
             // display
             GLFW.glfwSwapBuffers(hWindow);
@@ -431,10 +476,11 @@ public class OpenGL {
         GLFW.glfwTerminate();
     }
 
-    private static Matrix4x4 createModel(float time, Vector3 pos, float phase) {
+    private static Matrix4x4 createModel(float time, Vector3 pos, float phase, float scale) {
         Matrix4x4 R = Matrix4x4.createRotationY(time + phase).multiply(Matrix4x4.createRotationX(time * 0.7f + phase));
         Matrix4x4 T = Matrix4x4.createTranslation(pos.x(), pos.y(), pos.z());
-        return T.multiply(R);
+        Matrix4x4 S = Matrix4x4.createScale(scale);
+        return T.multiply(R).multiply(S);
     }
 
     private static Matrix4x4 createView() {
@@ -487,7 +533,7 @@ public class OpenGL {
             IntBuffer h = BufferUtils.createIntBuffer(1);
             IntBuffer comp = BufferUtils.createIntBuffer(1);
 
-            ByteBuffer pixelData = stbi_load_from_memory(fileBuffer, w, h, comp, 3);
+            ByteBuffer pixelData = stbi_load_from_memory(fileBuffer, w, h, comp, 4);
             if (pixelData == null) {
                 throw new RuntimeException(stbi_failure_reason());
             }
@@ -498,16 +544,70 @@ public class OpenGL {
             glTexImage2D(
                     GL_TEXTURE_2D,
                     0,
-                    GL_SRGB8,
+                    GL_SRGB8_ALPHA8,
                     texWidth,
                     texHeight,
                     0,
-                    GL_RGB,
+                    GL_RGBA,
                     GL_UNSIGNED_BYTE,
                     pixelData
             ); //0 -> mipmap level, 0 is base image
             glGenerateMipmap(GL_TEXTURE_2D);
             stbi_image_free(pixelData);
+        }
+    }
+
+    private static void buildSortedSphereIndices(
+            Mesh sphereMesh,
+            Matrix4x4 model,
+            Matrix4x4 view,
+            int cubeVertCount,
+            TriDepth[] triDepths,
+            int[] outSortedIndices
+    ) {
+        int triCount = sphereMesh.triangles.size();
+
+        // compute depth per triangle
+        for (int ti = 0; ti < triCount; ti++) {
+            var tri = sphereMesh.triangles.get(ti);
+
+            Vector4 p0v4 = sphereMesh.vertices.get(tri.a()).position();
+            Vector4 p1v4 = sphereMesh.vertices.get(tri.b()).position();
+            Vector4 p2v4 = sphereMesh.vertices.get(tri.c()).position();
+
+            Vector3 p0 = new Vector3(p0v4.x(), p0v4.y(), p0v4.z());
+            Vector3 p1 = new Vector3(p1v4.x(), p1v4.y(), p1v4.z());
+            Vector3 p2 = new Vector3(p2v4.x(), p2v4.y(), p2v4.z());
+
+            Vector3 v0 = Vector3.transform(Vector3.transform(p0, model), view);
+            Vector3 v1 = Vector3.transform(Vector3.transform(p1, model), view);
+            Vector3 v2 = Vector3.transform(Vector3.transform(p2, model), view);
+
+            triDepths[ti].triIndex = ti;
+            triDepths[ti].depth = (v0.z() + v1.z() + v2.z()) / 3.0f;
+        }
+
+        // sort back-to-front
+        Arrays.sort(triDepths, (a, b) -> Float.compare(a.depth, b.depth));
+
+        // write indices in sorted order with offset
+        int idx = 0;
+        for (int s = 0; s < triCount; s++) {
+            var tri = sphereMesh.triangles.get(triDepths[s].triIndex);
+
+            outSortedIndices[idx++] = tri.a() + cubeVertCount;
+            outSortedIndices[idx++] = tri.b() + cubeVertCount;
+            outSortedIndices[idx++] = tri.c() + cubeVertCount;
+        }
+    }
+
+    private static class TriDepth {
+        int triIndex;
+        float depth;
+
+        TriDepth(int triIndex, float depth) {
+            this.triIndex = triIndex;
+            this.depth = depth;
         }
     }
 }
