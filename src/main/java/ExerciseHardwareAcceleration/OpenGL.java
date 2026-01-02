@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Objects;
+import java.util.Arrays;
 
 import static org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT;
 import static org.lwjgl.opengl.EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT;
@@ -24,8 +25,6 @@ import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.stb.STBImage.*;
 
-import java.util.Arrays;
-import java.util.Comparator; // optional if you use a lambda comparator
 
 // add the .jar files as a library to the project not with maven
 
@@ -113,7 +112,6 @@ public class OpenGL {
                     vec4 worldPos = uModel * vec4(inPos, 1.0);
                     vWorldPos = worldPos.xyz;
 
-                    // correct normal transform for rotations (ok for your current rotation-only model)
                     vWorldNormal = normalize(mat3(uModel) * inNormal);
 
                     vColor = inColor;
@@ -129,8 +127,6 @@ public class OpenGL {
         if (glGetShaderi(hVertexShader, GL_COMPILE_STATUS) != GL_TRUE) {
             throw new Exception(glGetShaderInfoLog(hVertexShader));
         }
-
-        // see https://www.khronos.org/opengl/wiki/Fragment_Shader
 
         /*
         fromVertexShaderToFragmentShader: user-defined output of the vertex shader,
@@ -277,7 +273,6 @@ public class OpenGL {
         glBufferData(GL_ARRAY_BUFFER, triangleColors, GL_STATIC_DRAW);
 
         // upload model indices to a vbo (vertex buffer object, actual data in gpu)
-        //var triangleIndices = new int[]{0, 1, 2};
         int cubeVertCount = cubeMesh.vertices.size();
         int cubeIndexCount = cubeMesh.triangles.size() * 3;
 
@@ -285,9 +280,7 @@ public class OpenGL {
 
         // correct total index array size
         int[] triangleIndices = new int[cubeIndexCount + sphereIndexCount];
-
         int i = 0;
-
         // cube indices first
         for (var tri : cubeMesh.triangles) {
             triangleIndices[i++] = tri.a();
@@ -304,12 +297,12 @@ public class OpenGL {
 
         float[] triangleNormals = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
         int n = 0;
-
         for (var vert : cubeMesh.vertices) {
             triangleNormals[n++] = vert.normal().x();
             triangleNormals[n++] = vert.normal().y();
             triangleNormals[n++] = vert.normal().z();
         }
+
         for (var vert : sphereMesh.vertices) {
             triangleNormals[n++] = vert.normal().x();
             triangleNormals[n++] = vert.normal().y();
@@ -334,7 +327,6 @@ public class OpenGL {
         int vboSphereSorted = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphereIndexCount * (long) Integer.BYTES, GL_DYNAMIC_DRAW);
-
 
         // set up a vao (vertex array objects, where each in variable is read from)
         var vaoTriangle = glGenVertexArrays();
@@ -557,14 +549,7 @@ public class OpenGL {
         }
     }
 
-    private static void buildSortedSphereIndices(
-            Mesh sphereMesh,
-            Matrix4x4 model,
-            Matrix4x4 view,
-            int cubeVertCount,
-            TriDepth[] triDepths,
-            int[] outSortedIndices
-    ) {
+    private static void buildSortedSphereIndices(Mesh sphereMesh, Matrix4x4 model, Matrix4x4 view, int cubeVertCount, TriDepth[] triDepths, int[] outSortedIndices) {
         int triCount = sphereMesh.triangles.size();
 
         // compute depth per triangle
