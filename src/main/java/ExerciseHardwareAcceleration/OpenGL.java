@@ -34,47 +34,388 @@ public class OpenGL {
     static final float zFar = 100.0f;
 
     public static void main(String[] args) throws Exception {
-        // open a window
-        GLFWErrorCallback.createPrint(System.err).set();
-        if (!GLFW.glfwInit()) {
-            throw new IllegalStateException("Unable to initialize GLFW");
+
+        // setup Window and OpenGL
+        long hWindow = setupWindowAndOpenGL();
+
+        // configure vertex shader
+        var VertexShaderSource = createVertexShaderSource();
+        var hVertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(hVertexShader, VertexShaderSource);
+        glCompileShader(hVertexShader);
+        if (glGetShaderi(hVertexShader, GL_COMPILE_STATUS) != GL_TRUE) {
+            throw new Exception(glGetShaderInfoLog(hVertexShader));
         }
-        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 4);
-        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 1);
-        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_DEBUG_CONTEXT, GLFW.GLFW_TRUE);
-        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
-        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
-        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE); // window not resizable
 
-        var hWindow = GLFW.glfwCreateWindow(WIDTH, HEIGHT, "ComGr", 0, 0);
-
-        GLFW.glfwMakeContextCurrent(hWindow);
-        GLFW.glfwSwapInterval(1);
-        createCapabilities();
-        glViewport(0, 0, WIDTH, HEIGHT);
-
-        // set up opengl
-        if (GLFW.glfwExtensionSupported("GL_KHR_debug")) {
-            GL43.glDebugMessageCallback(
-                    GLDebugMessageCallback.create((source, type, id, severity, length, message, userParam) -> {
-                        var msg = GLDebugMessageCallback.getMessage(length, message);
-                        if (type == GL43.GL_DEBUG_TYPE_ERROR) {
-                            throw new RuntimeException(msg);
-                        } else {
-                            System.out.println(msg);
-                        }
-                    }), 0);
-            glEnable(GL43.GL_DEBUG_OUTPUT);
-            glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        // configure post vertex shader
+        var PostVS = createPostVertexSource();
+        int postVS = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(postVS, PostVS);
+        glCompileShader(postVS);
+        if (glGetShaderi(postVS, GL_COMPILE_STATUS) != GL_TRUE) {
+            throw new Exception(glGetShaderInfoLog(postVS));
         }
-        glEnable(GL_FRAMEBUFFER_SRGB);
-        glClearColor(0.005f, 0.005f, 0.005f, 0.0f);
-        glClearDepth(1.0);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        // load, compile and link shaders
-        var VertexShaderSource = """
+        // configure fragment shader
+        var FragmentShaderSource = createFragmentShaderSource();
+        var hFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(hFragmentShader, FragmentShaderSource);
+        glCompileShader(hFragmentShader);
+        if (glGetShaderi(hFragmentShader, GL_COMPILE_STATUS) != GL_TRUE) {
+            throw new Exception(glGetShaderInfoLog(hFragmentShader));
+        }
+
+        // configure post fragment shader
+        var PostFS = createPostFragmentSource();
+        int postFS = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(postFS, PostFS);
+        glCompileShader(postFS);
+        if (glGetShaderi(postFS, GL_COMPILE_STATUS) != GL_TRUE) {
+            throw new Exception(glGetShaderInfoLog(postFS));
+        }
+
+        // configure post shader
+        int postProgram = glCreateProgram();
+        glAttachShader(postProgram, postVS);
+        glAttachShader(postProgram, postFS);
+        glLinkProgram(postProgram);
+        if (glGetProgrami(postProgram, GL_LINK_STATUS) != GL_TRUE) {
+            throw new Exception(glGetProgramInfoLog(postProgram));
+        }
+
+        // setup variables for blue tint
+        int uScene = glGetUniformLocation(postProgram, "uScene");
+        int uTint = glGetUniformLocation(postProgram, "uTint");
+        int uStrength = glGetUniformLocation(postProgram, "uStrength");
+        int postVAO = glGenVertexArrays();
+
+        // link shaders to a program
+        var hProgram = glCreateProgram();
+        glAttachShader(hProgram, hFragmentShader);
+        glAttachShader(hProgram, hVertexShader);
+        glLinkProgram(hProgram);
+        if (glGetProgrami(hProgram, GL_LINK_STATUS) != GL_TRUE) {
+            throw new Exception(glGetProgramInfoLog(hProgram));
+        }
+
+        // setup variables for MVP calculation
+        int uModel = glGetUniformLocation(hProgram, "uModel");
+        int uView = glGetUniformLocation(hProgram, "uView");
+        int uProj = glGetUniformLocation(hProgram, "uProj");
+
+        // setup variables for Diffuse Specular Lighting
+        int uLightPos = glGetUniformLocation(hProgram, "uLightPos");
+        int uCameraPos = glGetUniformLocation(hProgram, "uCameraPos");
+        int uAlpha = glGetUniformLocation(hProgram, "uAlpha");
+
+        // Cube Mesh
+        Mesh cubeMesh = Mesh.createCube(
+                new Vector3(1, 0, 0),
+                new Vector3(0, 1, 0),
+                new Vector3(0, 0, 1),
+                new Vector3(1, 1, 0),
+                new Vector3(1, 0, 1),
+                new Vector3(0, 1, 1));
+
+        // Sphere Mesh
+        Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 1, 1));
+
+        // prepare triangleVertices for vbo
+        float[] triangleVertices = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
+        int v = 0;
+        for (var vert : cubeMesh.vertices) {
+            triangleVertices[v++] = vert.position().x();
+            triangleVertices[v++] = vert.position().y();
+            triangleVertices[v++] = vert.position().z();
+        }
+        for (var vert : sphereMesh.vertices) {
+            triangleVertices[v++] = vert.position().x();
+            triangleVertices[v++] = vert.position().y();
+            triangleVertices[v++] = vert.position().z();
+        }
+
+        // upload model vertices to a vbo
+        var vboTriangleVertices = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleVertices);
+        glBufferData(GL_ARRAY_BUFFER, triangleVertices, GL_STATIC_DRAW);
+
+        float[] triangleUVs = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 2];
+        int t = 0;
+
+        // cube UVs from mesh
+        for (var vert : cubeMesh.vertices) {
+            triangleUVs[t++] = vert.texCoord().x();
+            triangleUVs[t++] = vert.texCoord().y();
+        }
+
+        // sphere UVs from mesh
+        for (var vert : sphereMesh.vertices) {
+            triangleUVs[t++] = vert.texCoord().x();
+            triangleUVs[t++] = vert.texCoord().y();
+        }
+
+        // upload triangleUVs to vbo
+        int vboTriangleUVs = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
+        glBufferData(GL_ARRAY_BUFFER, triangleUVs, GL_STATIC_DRAW);
+
+        // upload model colors to a vbo
+        float[] triangleColors = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
+        int c = 0;
+
+        for (var vert : cubeMesh.vertices) {
+            triangleColors[c++] = vert.color().x();
+            triangleColors[c++] = vert.color().y();
+            triangleColors[c++] = vert.color().z();
+        }
+        for (var vert : sphereMesh.vertices) {
+            triangleColors[c++] = vert.color().x();
+            triangleColors[c++] = vert.color().y();
+            triangleColors[c++] = vert.color().z();
+        }
+
+        var vboTriangleColors = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleColors);
+        glBufferData(GL_ARRAY_BUFFER, triangleColors, GL_STATIC_DRAW);
+
+        // upload model indices to a vbo (vertex buffer object, actual data in gpu)
+        int cubeVertCount = cubeMesh.vertices.size();
+        int cubeIndexCount = cubeMesh.triangles.size() * 3;
+        int sphereIndexCount = sphereMesh.triangles.size() * 3;
+
+        int[] triangleIndices = new int[cubeIndexCount + sphereIndexCount];
+        int i = 0;
+        for (var tri : cubeMesh.triangles) {
+            triangleIndices[i++] = tri.a();
+            triangleIndices[i++] = tri.b();
+            triangleIndices[i++] = tri.c();
+        }
+
+        // sphere indices appended
+        for (var tri : sphereMesh.triangles) {
+            triangleIndices[i++] = tri.a() + cubeVertCount;
+            triangleIndices[i++] = tri.b() + cubeVertCount;
+            triangleIndices[i++] = tri.c() + cubeVertCount;
+        }
+
+        // prepare triangle Normals for specular & diffuse lighting
+        float[] triangleNormals = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
+        int n = 0;
+        for (var vert : cubeMesh.vertices) {
+            triangleNormals[n++] = vert.normal().x();
+            triangleNormals[n++] = vert.normal().y();
+            triangleNormals[n++] = vert.normal().z();
+        }
+
+        for (var vert : sphereMesh.vertices) {
+            triangleNormals[n++] = vert.normal().x();
+            triangleNormals[n++] = vert.normal().y();
+            triangleNormals[n++] = vert.normal().z();
+        }
+
+        int vboTriangleNormals = glGenBuffers();
+        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
+        glBufferData(GL_ARRAY_BUFFER, triangleNormals, GL_STATIC_DRAW);
+
+        // textures
+        int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
+        int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
+        int hTexture3 = addTextureObject("/ExerciseHardwareAcceleration/smoke2.png");
+        int hTexture4 = addTextureObject("/ExerciseHardwareAcceleration/marble.png");
+        int hTexture5 = addTextureObject("/ExerciseHardwareAcceleration/stripes.png");
+
+        var vboTriangleIndices = glGenBuffers();
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices, GL_STATIC_DRAW);
+
+        // vbo for sorted transparent sphere with smoke texture
+        int vboSphereSorted = glGenBuffers();
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphereIndexCount * (long) Integer.BYTES, GL_DYNAMIC_DRAW);
+
+        // set up a vao (vertex array objects, where each in variable is read from)
+        var vaoTriangle = glGenVertexArrays();
+        glBindVertexArray(vaoTriangle);
+        var posAttribIndex = glGetAttribLocation(hProgram, "inPos");
+
+        int normalAttribIndex = glGetAttribLocation(hProgram, "inNormal");
+        if (normalAttribIndex != -1) {
+            glEnableVertexAttribArray(normalAttribIndex);
+            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
+            glVertexAttribPointer(normalAttribIndex, 3, GL_FLOAT, false, 0, 0L);
+        }
+
+        int uvAttribIndex = glGetAttribLocation(hProgram, "inUV");
+        if (uvAttribIndex != -1) {
+            glEnableVertexAttribArray(uvAttribIndex);
+            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
+            glVertexAttribPointer(uvAttribIndex, 2, GL_FLOAT, false, 0, 0L);
+        }
+
+        var colorAttribIndex = glGetAttribLocation(hProgram, "inColor");
+        if (colorAttribIndex != -1) {
+            glEnableVertexAttribArray(colorAttribIndex);
+            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleColors);
+            glVertexAttribPointer(colorAttribIndex, 3, GL_FLOAT, false, 0, 0L);
+        }
+
+        if (posAttribIndex != -1) {
+            glEnableVertexAttribArray(posAttribIndex);
+            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleVertices);
+            glVertexAttribPointer(posAttribIndex, 3, GL_FLOAT, false, 0, 0L);
+        }
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
+
+        // check for errors during all previous calls
+        var error = glGetError();
+        if (error != GL_NO_ERROR) {
+            throw new Exception(Integer.toString(error));
+        }
+
+        // FBO initialisation
+        int texId = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, texId);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer) null);
+
+        //allocate renderbuffer
+        int rboId = glGenRenderbuffers();
+        glBindRenderbuffer(GL_RENDERBUFFER, rboId);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WIDTH, HEIGHT);
+
+        // setup fbo
+        int fboId = glGenFramebuffers();
+        glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texId, 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId);
+
+        // render loop preparation
+        var startTime = System.currentTimeMillis();
+        int sphereTriCount = sphereMesh.triangles.size(); // for sorted triangles in the glassy sphere
+        int[] sphereSortedIndices = new int[sphereIndexCount];
+        TriDepth[] triDepths = new TriDepth[sphereTriCount];
+        for (int ti = 0; ti < sphereTriCount; ti++) {
+            triDepths[ti] = new TriDepth(ti, 0f);
+        }
+
+        // render loop
+        while (!GLFW.glfwWindowShouldClose(hWindow)) {
+            // switch to our shader
+            glUseProgram(hProgram);
+
+            // render to fbo
+            glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+            glViewport(0, 0, WIDTH, HEIGHT);
+            // clear screen and z-buffer
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // set per-frame uniforms
+            Matrix4x4 V = createView();
+            Matrix4x4 P = createProj();
+            glUniformMatrix4fv(uView, false, V.toArray());
+            glUniformMatrix4fv(uProj, false, P.toArray());
+
+            glUniform3f(uLightPos, 0f, 0f, 20.0f);
+            glUniform3f(uCameraPos, 0.0f, 0.0f, 10.0f);
+            glUniform1f(uAlpha, 1.0f);
+
+            int tiuIndex = 1;
+            glActiveTexture(GL_TEXTURE0 + tiuIndex);
+            glBindTexture(GL_TEXTURE_2D, hTexture1);
+            int loc = glGetUniformLocation(hProgram, "textures");
+            if (loc == -1) {
+                throw new RuntimeException("Uniform texture not found");
+            }
+            glUniform1i(loc, tiuIndex);
+            // set uniform values
+            float time = (float) (System.currentTimeMillis() - startTime) * 0.0007f;
+
+            glBindVertexArray(vaoTriangle);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
+
+            Vector3[] cubePos = new Vector3[]{
+                    new Vector3(-3.0f, 0.0f, 0.0f),
+                    new Vector3(0.0f, -3.0f, 0.0f),
+                    new Vector3(3.0f, 0.0f, 0.0f),
+                    new Vector3(0.0f, 3.0f, 0.0f),
+            };
+
+            // 4 rotating cubes around sphere
+            for (int k = 0; k < 4; k++) {
+                if (k % 2 == 0) {
+                    glBindTexture(GL_TEXTURE_2D, hTexture1);
+                } else {
+                    glBindTexture(GL_TEXTURE_2D, hTexture3);
+                }
+                Matrix4x4 M = createModel(time, cubePos[k], k * 3.0f, 1.0f);
+                glUniformMatrix4fv(uModel, false, M.toArray());
+                glDrawElements(GL_TRIANGLES, cubeIndexCount, GL_UNSIGNED_INT, 0L);
+            }
+
+            // center sphere
+            Vector3 spherePos = new Vector3(0.0f, 0.0f, 0.0f);
+            long sphereIndexOffsetBytes = (long) cubeIndexCount * Integer.BYTES;
+            glBindTexture(GL_TEXTURE_2D, hTexture2);
+            Matrix4x4 sphereM = createModel(time, spherePos, 3.0f, 1.0f);
+            glUniformMatrix4fv(uModel, false, sphereM.toArray());
+            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, sphereIndexOffsetBytes);
+
+            // smokey sphere
+            glDepthMask(false);
+            glUniform1f(uAlpha, 0.8f);
+            glBindTexture(GL_TEXTURE_2D, hTexture3);
+            Matrix4x4 glassM = createModel(time * 0.5f, spherePos, 1.0f, 4.5f);
+            glUniformMatrix4fv(uModel, false, glassM.toArray());
+
+            buildSortedSphereIndices(sphereMesh, glassM, V, cubeVertCount, triDepths, sphereSortedIndices);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sphereSortedIndices);
+            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, 0L);
+
+            // restore after smokey sphere
+            glUniform1f(uAlpha, 1.0f);
+            glDepthMask(true);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
+
+            // render to screen
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, WIDTH, HEIGHT);
+            glDisable(GL_DEPTH_TEST);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glUseProgram(postProgram);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texId);
+            glUniform1i(uScene, 0);
+
+            // set blueish tint + strength
+            glUniform3f(uTint, 0.1f, 0.1f, 1f);
+            glUniform1f(uStrength, 0.8f);
+
+            // draw fullscreen triangle
+            glBindVertexArray(postVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glEnable(GL_DEPTH_TEST);
+
+            // display
+            GLFW.glfwSwapBuffers(hWindow);
+            GLFW.glfwPollEvents();
+
+            error = glGetError();
+            if (error != GL_NO_ERROR) {
+                throw new Exception(Integer.toString(error));
+            }
+        }
+
+        GLFW.glfwDestroyWindow(hWindow);
+        GLFW.glfwTerminate();
+    }
+
+    private static String createVertexShaderSource() {
+        return """
                 #version 400 core
 
                 uniform mat4 uModel;
@@ -104,15 +445,10 @@ public class OpenGL {
                     gl_Position = uProj * uView * worldPos;
                 }
                 """;
+    }
 
-        var hVertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(hVertexShader, VertexShaderSource);
-        glCompileShader(hVertexShader);
-        if (glGetShaderi(hVertexShader, GL_COMPILE_STATUS) != GL_TRUE) {
-            throw new Exception(glGetShaderInfoLog(hVertexShader));
-        }
-
-        var PostVS = """
+    private static String createPostVertexSource() {
+        return """
                 #version 400 core
                 out vec2 vUV;
 
@@ -128,15 +464,10 @@ public class OpenGL {
                     vUV = pos * 0.5 + 0.5;
                 }
                 """;
+    }
 
-        int postVS = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(postVS, PostVS);
-        glCompileShader(postVS);
-        if (glGetShaderi(postVS, GL_COMPILE_STATUS) != GL_TRUE) {
-            throw new Exception(glGetShaderInfoLog(postVS));
-        }
-
-        var FragmentShaderSource = """
+    private static String createFragmentShaderSource() {
+        return """
                 #version 400 core
 
                 in vec3 vColor;
@@ -184,14 +515,10 @@ public class OpenGL {
                 }
                 """;
 
-        var hFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(hFragmentShader, FragmentShaderSource);
-        glCompileShader(hFragmentShader);
-        if (glGetShaderi(hFragmentShader, GL_COMPILE_STATUS) != GL_TRUE) {
-            throw new Exception(glGetShaderInfoLog(hFragmentShader));
-        }
+    }
 
-        var PostFS = """
+    private static String createPostFragmentSource() {
+        return """
                 #version 400 core
                 in vec2 vUV;
                 uniform sampler2D uScene;
@@ -206,346 +533,48 @@ public class OpenGL {
                     outColor = vec4(mixed, c.a);
                 }
                 """;
+    }
 
-        int postFS = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(postFS, PostFS);
-        glCompileShader(postFS);
-        if (glGetShaderi(postFS, GL_COMPILE_STATUS) != GL_TRUE) {
-            throw new Exception(glGetShaderInfoLog(postFS));
+    private static long setupWindowAndOpenGL() {
+        // open a window
+        GLFWErrorCallback.createPrint(System.err).set();
+        if (!GLFW.glfwInit()) {
+            throw new IllegalStateException("Unable to initialize GLFW");
         }
+        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 4);
+        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 1);
+        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_DEBUG_CONTEXT, GLFW.GLFW_TRUE);
+        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
+        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
+        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE); // window not resizable
 
-        int postProgram = glCreateProgram();
-        glAttachShader(postProgram, postVS);
-        glAttachShader(postProgram, postFS);
-        glLinkProgram(postProgram);
-        if (glGetProgrami(postProgram, GL_LINK_STATUS) != GL_TRUE) {
-            throw new Exception(glGetProgramInfoLog(postProgram));
+        var hWindow = GLFW.glfwCreateWindow(WIDTH, HEIGHT, "ComGr", 0, 0);
+
+        GLFW.glfwMakeContextCurrent(hWindow);
+        GLFW.glfwSwapInterval(1);
+        createCapabilities();
+        glViewport(0, 0, WIDTH, HEIGHT);
+
+        // set up opengl
+        if (GLFW.glfwExtensionSupported("GL_KHR_debug")) {
+            GL43.glDebugMessageCallback(
+                    GLDebugMessageCallback.create((source, type, id, severity, length, message, userParam) -> {
+                        var msg = GLDebugMessageCallback.getMessage(length, message);
+                        if (type == GL43.GL_DEBUG_TYPE_ERROR) {
+                            throw new RuntimeException(msg);
+                        } else {
+                            System.out.println(msg);
+                        }
+                    }), 0);
+            glEnable(GL43.GL_DEBUG_OUTPUT);
+            glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
         }
-
-        int uScene = glGetUniformLocation(postProgram, "uScene");
-        int uTint = glGetUniformLocation(postProgram, "uTint");
-        int uStrength = glGetUniformLocation(postProgram, "uStrength");
-        int postVAO = glGenVertexArrays();
-
-        // link shaders to a program
-        var hProgram = glCreateProgram();
-        glAttachShader(hProgram, hFragmentShader);
-        glAttachShader(hProgram, hVertexShader);
-        glLinkProgram(hProgram);
-        if (glGetProgrami(hProgram, GL_LINK_STATUS) != GL_TRUE) {
-            throw new Exception(glGetProgramInfoLog(hProgram));
-        }
-
-        int uModel = glGetUniformLocation(hProgram, "uModel");
-        int uView = glGetUniformLocation(hProgram, "uView");
-        int uProj = glGetUniformLocation(hProgram, "uProj");
-
-        int uLightPos = glGetUniformLocation(hProgram, "uLightPos");
-        int uCameraPos = glGetUniformLocation(hProgram, "uCameraPos");
-        int uAlpha = glGetUniformLocation(hProgram, "uAlpha");
-
-        Mesh cubeMesh = Mesh.createCube(
-                new Vector3(1, 0, 0),
-                new Vector3(0, 1, 0),
-                new Vector3(0, 0, 1),
-                new Vector3(1, 1, 0),
-                new Vector3(1, 0, 1),
-                new Vector3(0, 1, 1));
-
-        Mesh sphereMesh = Mesh.createSphere(16, new Vector3(1, 1, 1));
-
-        float[] triangleVertices = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
-        int v = 0;
-        for (var vert : cubeMesh.vertices) {
-            triangleVertices[v++] = vert.position().x();
-            triangleVertices[v++] = vert.position().y();
-            triangleVertices[v++] = vert.position().z();
-        }
-        for (var vert : sphereMesh.vertices) {
-            triangleVertices[v++] = vert.position().x();
-            triangleVertices[v++] = vert.position().y();
-            triangleVertices[v++] = vert.position().z();
-        }
-
-        // upload model vertices to a vbo
-        var vboTriangleVertices = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleVertices);
-        glBufferData(GL_ARRAY_BUFFER, triangleVertices, GL_STATIC_DRAW);
-
-        float[] triangleUVs = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 2];
-        int t = 0;
-
-        // cube UVs from mesh
-        for (var vert : cubeMesh.vertices) {
-            triangleUVs[t++] = vert.texCoord().x();
-            triangleUVs[t++] = vert.texCoord().y();
-        }
-
-        // sphere UVs from mesh
-        for (var vert : sphereMesh.vertices) {
-            triangleUVs[t++] = vert.texCoord().x();
-            triangleUVs[t++] = vert.texCoord().y();
-        }
-
-        int vboTriangleUVs = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
-        glBufferData(GL_ARRAY_BUFFER, triangleUVs, GL_STATIC_DRAW);
-
-        // upload model colors to a vbo
-        float[] triangleColors = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
-        int c = 0;
-
-        for (var vert : cubeMesh.vertices) {
-            triangleColors[c++] = vert.color().x();
-            triangleColors[c++] = vert.color().y();
-            triangleColors[c++] = vert.color().z();
-        }
-        for (var vert : sphereMesh.vertices) {
-            triangleColors[c++] = vert.color().x();
-            triangleColors[c++] = vert.color().y();
-            triangleColors[c++] = vert.color().z();
-        }
-
-        var vboTriangleColors = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleColors);
-        glBufferData(GL_ARRAY_BUFFER, triangleColors, GL_STATIC_DRAW);
-
-        // upload model indices to a vbo (vertex buffer object, actual data in gpu)
-        int cubeVertCount = cubeMesh.vertices.size();
-        int cubeIndexCount = cubeMesh.triangles.size() * 3;
-        int sphereIndexCount = sphereMesh.triangles.size() * 3;
-
-        // correct total index array size
-        int[] triangleIndices = new int[cubeIndexCount + sphereIndexCount];
-        int i = 0;
-        for (var tri : cubeMesh.triangles) {
-            triangleIndices[i++] = tri.a();
-            triangleIndices[i++] = tri.b();
-            triangleIndices[i++] = tri.c();
-        }
-
-        // sphere indices appended WITH OFFSET
-        for (var tri : sphereMesh.triangles) {
-            triangleIndices[i++] = tri.a() + cubeVertCount;
-            triangleIndices[i++] = tri.b() + cubeVertCount;
-            triangleIndices[i++] = tri.c() + cubeVertCount;
-        }
-
-        float[] triangleNormals = new float[(cubeMesh.vertices.size() + sphereMesh.vertices.size()) * 3];
-        int n = 0;
-        for (var vert : cubeMesh.vertices) {
-            triangleNormals[n++] = vert.normal().x();
-            triangleNormals[n++] = vert.normal().y();
-            triangleNormals[n++] = vert.normal().z();
-        }
-
-        for (var vert : sphereMesh.vertices) {
-            triangleNormals[n++] = vert.normal().x();
-            triangleNormals[n++] = vert.normal().y();
-            triangleNormals[n++] = vert.normal().z();
-        }
-
-        int vboTriangleNormals = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
-        glBufferData(GL_ARRAY_BUFFER, triangleNormals, GL_STATIC_DRAW);
-
-        // textures
-        int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
-        int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
-        int hTexture3 = addTextureObject("/ExerciseHardwareAcceleration/smoke2.png");
-        //int hTexture4 = addTextureObject("/ExerciseHardwareAcceleration/marble.png");
-        //int hTexture5 = addTextureObject("/ExerciseHardwareAcceleration/stripes.png");
-
-
-        var vboTriangleIndices = glGenBuffers();
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices, GL_STATIC_DRAW);
-
-        // vbo for sorted transparent sphere
-        int vboSphereSorted = glGenBuffers();
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphereIndexCount * (long) Integer.BYTES, GL_DYNAMIC_DRAW);
-
-        // set up a vao (vertex array objects, where each in variable is read from)
-        var vaoTriangle = glGenVertexArrays();
-        glBindVertexArray(vaoTriangle);
-        var posAttribIndex = glGetAttribLocation(hProgram, "inPos");
-
-        int normalAttribIndex = glGetAttribLocation(hProgram, "inNormal");
-        if (normalAttribIndex != -1) {
-            glEnableVertexAttribArray(normalAttribIndex);
-            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
-            glVertexAttribPointer(normalAttribIndex, 3, GL_FLOAT, false, 0, 0L);
-        }
-
-        int uvAttribIndex = glGetAttribLocation(hProgram, "inUV");
-        if (uvAttribIndex != -1) {
-            glEnableVertexAttribArray(uvAttribIndex);
-            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleUVs);
-            glVertexAttribPointer(uvAttribIndex, 2, GL_FLOAT, false, 0, 0L);
-        }
-
-        var colorAttribIndex = glGetAttribLocation(hProgram, "inColor");
-        if (colorAttribIndex != -1) {
-            glEnableVertexAttribArray(colorAttribIndex);
-            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleColors);
-            glVertexAttribPointer(colorAttribIndex, 3, GL_FLOAT, false, 0, 0L);
-        }
-
-        if (posAttribIndex != -1) {
-            glEnableVertexAttribArray(posAttribIndex);
-            glBindBuffer(GL_ARRAY_BUFFER, vboTriangleVertices);
-            glVertexAttribPointer(posAttribIndex, 3, GL_FLOAT, false, 0, 0);
-        }
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
-
-        // check for errors during all previous calls
-        var error = glGetError();
-        if (error != GL_NO_ERROR) {
-            throw new Exception(Integer.toString(error));
-        }
-
-        // FBO initialisation
-        //allocate texture
-        int texId = glGenTextures();
-        glBindTexture(GL_TEXTURE_2D, texId);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer) null);
-
-        //allocate renderbuffer
-        int rboId = glGenRenderbuffers();
-        glBindRenderbuffer(GL_RENDERBUFFER, rboId);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WIDTH, HEIGHT);
-
-        // setup fbo
-        int fboId = glGenFramebuffers();
-        glBindFramebuffer(GL_FRAMEBUFFER, fboId);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texId, 0);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId);
-
-        // render loop
-        var startTime = System.currentTimeMillis();
-
-        int sphereTriCount = sphereMesh.triangles.size();
-        int[] sphereSortedIndices = new int[sphereIndexCount];
-        TriDepth[] triDepths = new TriDepth[sphereTriCount];
-        for (int ti = 0; ti < sphereTriCount; ti++) {
-            triDepths[ti] = new TriDepth(ti, 0f);
-        }
-
-        while (!GLFW.glfwWindowShouldClose(hWindow)) {
-            // switch to our shader
-            glUseProgram(hProgram);
-
-            // render to fbo
-            glBindFramebuffer(GL_FRAMEBUFFER, fboId);
-            glViewport(0, 0, WIDTH, HEIGHT);
-            // clear screen and z-buffer
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // set per-frame uniforms
-            Matrix4x4 V = createView();
-            Matrix4x4 P = createProj();
-            glUniformMatrix4fv(uView, false, V.toArray());
-            glUniformMatrix4fv(uProj, false, P.toArray());
-
-            glUniform3f(uLightPos, 0f, 0f, 20.0f);
-            glUniform3f(uCameraPos, 0.0f, 0.0f, 10.0f);
-            glUniform1f(uAlpha, 1.0f);
-
-            int tiuIndex = 1;
-            glActiveTexture(GL_TEXTURE0 + tiuIndex);
-            glBindTexture(GL_TEXTURE_2D, hTexture1);
-            int loc = glGetUniformLocation(hProgram, "textures");
-            if (loc == -1) {
-                throw new RuntimeException("Uniform texture not found");
-            }
-            glUniform1i(loc, tiuIndex);
-
-            // set uniform values
-            float time = (float) (System.currentTimeMillis() - startTime) * 0.0007f;
-
-            glBindVertexArray(vaoTriangle);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
-
-            Vector3[] cubePos = new Vector3[]{
-                    new Vector3(-3.0f, 0.0f, 0.0f),
-                    new Vector3(0.0f, -3.0f, 0.0f),
-                    new Vector3(3.0f, 0.0f, 0.0f),
-                    new Vector3(0.0f, 3.0f, 0.0f),
-            };
-
-            for (int k = 0; k < 4; k++) {
-                if (k % 2 == 0) {
-                    glBindTexture(GL_TEXTURE_2D, hTexture1);
-                } else {
-                    glBindTexture(GL_TEXTURE_2D, hTexture3);
-                }
-                Matrix4x4 M = createModel(time, cubePos[k], k * 3.0f, 1.0f);
-                glUniformMatrix4fv(uModel, false, M.toArray());
-                glDrawElements(GL_TRIANGLES, cubeIndexCount, GL_UNSIGNED_INT, 0L);
-            }
-
-            // center sphere
-            Vector3 spherePos = new Vector3(0.0f, 0.0f, 0.0f);
-            long sphereIndexOffsetBytes = (long) cubeIndexCount * Integer.BYTES;
-            glBindTexture(GL_TEXTURE_2D, hTexture2);
-            Matrix4x4 sphereM = createModel(time, spherePos, 3.0f, 1.0f);
-            glUniformMatrix4fv(uModel, false, sphereM.toArray());
-            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, sphereIndexOffsetBytes);
-
-            // glassy sphere
-            glDepthMask(false);
-            glUniform1f(uAlpha, 0.8f);
-            glBindTexture(GL_TEXTURE_2D, hTexture3);
-            Matrix4x4 glassM = createModel(time * 0.5f, spherePos, 1.0f, 4.5f);
-            glUniformMatrix4fv(uModel, false, glassM.toArray());
-
-            buildSortedSphereIndices(sphereMesh, glassM, V, cubeVertCount, triDepths, sphereSortedIndices);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboSphereSorted);
-            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sphereSortedIndices);
-            glDrawElements(GL_TRIANGLES, sphereIndexCount, GL_UNSIGNED_INT, 0L);
-
-            // restore
-            glUniform1f(uAlpha, 1.0f);
-            glDepthMask(true);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
-
-            // render to screen
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glViewport(0, 0, WIDTH, HEIGHT);
-            glDisable(GL_DEPTH_TEST);
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            glUseProgram(postProgram);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texId);
-            glUniform1i(uScene, 0);
-
-            // set blueish tint + strength
-            glUniform3f(uTint, 0.1f, 0.1f, 1f);
-            glUniform1f(uStrength, 0.8f);
-
-            // draw fullscreen triangle
-            glBindVertexArray(postVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-            glEnable(GL_DEPTH_TEST);
-
-            // display
-            GLFW.glfwSwapBuffers(hWindow);
-            GLFW.glfwPollEvents();
-
-            error = glGetError();
-            if (error != GL_NO_ERROR) {
-                throw new Exception(Integer.toString(error));
-            }
-        }
-
-        GLFW.glfwDestroyWindow(hWindow);
-        GLFW.glfwTerminate();
+        glEnable(GL_FRAMEBUFFER_SRGB);
+        glClearColor(0.005f, 0.005f, 0.005f, 0.0f);
+        glClearDepth(1.0);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        return hWindow;
     }
 
     private static Matrix4x4 createModel(float time, Vector3 pos, float phase, float scale) {
