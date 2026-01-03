@@ -1,7 +1,6 @@
 package ExerciseHardwareAcceleration;
 
 import Mesh.*;
-import Mesh.Vector3;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -35,8 +34,6 @@ public class OpenGL {
     static final float zFar = 100.0f;
 
     public static void main(String[] args) throws Exception {
-        System.setProperty("java.awt.headless", "true");
-
         // open a window
         GLFWErrorCallback.createPrint(System.err).set();
         if (!GLFW.glfwInit()) {
@@ -47,15 +44,13 @@ public class OpenGL {
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_DEBUG_CONTEXT, GLFW.GLFW_TRUE);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
-        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE);
+        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE); // window not resizable
 
         var hWindow = GLFW.glfwCreateWindow(WIDTH, HEIGHT, "ComGr", 0, 0);
 
         GLFW.glfwMakeContextCurrent(hWindow);
         GLFW.glfwSwapInterval(1);
         createCapabilities();
-        glDrawBuffer(GL_BACK);
-        glReadBuffer(GL_BACK);
         glViewport(0, 0, WIDTH, HEIGHT);
 
         // set up opengl
@@ -75,21 +70,10 @@ public class OpenGL {
         glEnable(GL_FRAMEBUFFER_SRGB);
         glClearColor(0.005f, 0.005f, 0.005f, 0.0f);
         glClearDepth(1.0);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-        glDisable(GL_CULL_FACE);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         // load, compile and link shaders
-        // see https://www.khronos.org/opengl/wiki/Vertex_Shader
-
-        /*
-        fromVertexShaderToFragmentShader: Output to fragment shader
-        inPos: Input value per vertex
-        inColor: per vertex color attribute (from color VBO)
-        gl_Position: Transformed Position for FragmentShader [-1, 1]
-         */
         var VertexShaderSource = """
                 #version 400 core
 
@@ -152,12 +136,6 @@ public class OpenGL {
             throw new Exception(glGetShaderInfoLog(postVS));
         }
 
-        /*
-        fromVertexShaderToFragmentShader: user-defined output of the vertex shader,
-        interpolated per fragment and used as input in the fragment shader
-        outColor: user-defined fragment shader output variable
-        textures: TODO
-         */
         var FragmentShaderSource = """
                 #version 400 core
 
@@ -335,13 +313,11 @@ public class OpenGL {
         // upload model indices to a vbo (vertex buffer object, actual data in gpu)
         int cubeVertCount = cubeMesh.vertices.size();
         int cubeIndexCount = cubeMesh.triangles.size() * 3;
-
         int sphereIndexCount = sphereMesh.triangles.size() * 3;
 
         // correct total index array size
         int[] triangleIndices = new int[cubeIndexCount + sphereIndexCount];
         int i = 0;
-        // cube indices first
         for (var tri : cubeMesh.triangles) {
             triangleIndices[i++] = tri.a();
             triangleIndices[i++] = tri.b();
@@ -373,7 +349,7 @@ public class OpenGL {
         glBindBuffer(GL_ARRAY_BUFFER, vboTriangleNormals);
         glBufferData(GL_ARRAY_BUFFER, triangleNormals, GL_STATIC_DRAW);
 
-        // TODO: add textures
+        // textures
         int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
         int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
         int hTexture3 = addTextureObject("/ExerciseHardwareAcceleration/smoke2.png");
@@ -444,7 +420,7 @@ public class OpenGL {
         glBindRenderbuffer(GL_RENDERBUFFER, rboId);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WIDTH, HEIGHT);
 
-        //setup fbo
+        // setup fbo
         int fboId = glGenFramebuffers();
         glBindFramebuffer(GL_FRAMEBUFFER, fboId);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texId, 0);
@@ -464,7 +440,7 @@ public class OpenGL {
             // switch to our shader
             glUseProgram(hProgram);
 
-            //render to fbo
+            // render to fbo
             glBindFramebuffer(GL_FRAMEBUFFER, fboId);
             glViewport(0, 0, WIDTH, HEIGHT);
             // clear screen and z-buffer
