@@ -47,16 +47,16 @@ public class OpenGL {
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_DEBUG_CONTEXT, GLFW.GLFW_TRUE);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
+        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_FALSE);
+
         var hWindow = GLFW.glfwCreateWindow(WIDTH, HEIGHT, "ComGr", 0, 0);
-        GLFW.glfwSetWindowSizeCallback(hWindow, (window, width, height) -> {
-            var w = new int[1];
-            var h = new int[1];
-            GLFW.glfwGetFramebufferSize(window, w, h);
-            glViewport(0, 0, w[0], h[0]);
-        });
+
         GLFW.glfwMakeContextCurrent(hWindow);
         GLFW.glfwSwapInterval(1);
         createCapabilities();
+        glDrawBuffer(GL_BACK);
+        glReadBuffer(GL_BACK);
+        glViewport(0, 0, WIDTH, HEIGHT);
 
         // set up opengl
         if (GLFW.glfwExtensionSupported("GL_KHR_debug")) {
@@ -128,6 +128,30 @@ public class OpenGL {
             throw new Exception(glGetShaderInfoLog(hVertexShader));
         }
 
+        var PostVS = """
+                #version 400 core
+                out vec2 vUV;
+
+                // fullscreen triangle using gl_VertexID
+                void main() {
+                    vec2 pos = vec2(
+                        (gl_VertexID == 2) ? 3.0 : -1.0,
+                        (gl_VertexID == 1) ? 3.0 : -1.0
+                    );
+                    gl_Position = vec4(pos, 0.0, 1.0);
+
+                    // Map from clip space (-1..1) to UV (0..1)
+                    vUV = pos * 0.5 + 0.5;
+                }
+                """;
+
+        int postVS = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(postVS, PostVS);
+        glCompileShader(postVS);
+        if (glGetShaderi(postVS, GL_COMPILE_STATUS) != GL_TRUE) {
+            throw new Exception(glGetShaderInfoLog(postVS));
+        }
+
         /*
         fromVertexShaderToFragmentShader: user-defined output of the vertex shader,
         interpolated per fragment and used as input in the fragment shader
@@ -188,6 +212,42 @@ public class OpenGL {
         if (glGetShaderi(hFragmentShader, GL_COMPILE_STATUS) != GL_TRUE) {
             throw new Exception(glGetShaderInfoLog(hFragmentShader));
         }
+
+        var PostFS = """
+                #version 400 core
+                in vec2 vUV;
+                uniform sampler2D uScene;
+                uniform vec3 uTint;
+                uniform float uStrength;
+                out vec4 outColor;
+
+                void main() {
+                    vec4 c = texture(uScene, vUV);
+                    vec3 tinted = c.rgb * uTint;
+                    vec3 mixed = mix(c.rgb, tinted, uStrength);
+                    outColor = vec4(mixed, c.a);
+                }
+                """;
+
+        int postFS = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(postFS, PostFS);
+        glCompileShader(postFS);
+        if (glGetShaderi(postFS, GL_COMPILE_STATUS) != GL_TRUE) {
+            throw new Exception(glGetShaderInfoLog(postFS));
+        }
+
+        int postProgram = glCreateProgram();
+        glAttachShader(postProgram, postVS);
+        glAttachShader(postProgram, postFS);
+        glLinkProgram(postProgram);
+        if (glGetProgrami(postProgram, GL_LINK_STATUS) != GL_TRUE) {
+            throw new Exception(glGetProgramInfoLog(postProgram));
+        }
+
+        int uScene = glGetUniformLocation(postProgram, "uScene");
+        int uTint = glGetUniformLocation(postProgram, "uTint");
+        int uStrength = glGetUniformLocation(postProgram, "uStrength");
+        int postVAO = glGenVertexArrays();
 
         // link shaders to a program
         var hProgram = glCreateProgram();
@@ -317,7 +377,9 @@ public class OpenGL {
         int hTexture1 = addTextureObject("/ExerciseHardwareAcceleration/chessboard.png");
         int hTexture2 = addTextureObject("/ExerciseHardwareAcceleration/water.png");
         int hTexture3 = addTextureObject("/ExerciseHardwareAcceleration/smoke2.png");
-        int hTexture4 = addTextureObject("/ExerciseHardwareAcceleration/Marble.png");
+        //int hTexture4 = addTextureObject("/ExerciseHardwareAcceleration/marble.png");
+        //int hTexture5 = addTextureObject("/ExerciseHardwareAcceleration/stripes.png");
+
 
         var vboTriangleIndices = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
@@ -367,30 +429,53 @@ public class OpenGL {
             throw new Exception(Integer.toString(error));
         }
 
+        // FBO initialisation
+        //allocate texture
+        int texId = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, texId);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer) null);
+
+        //allocate renderbuffer
+        int rboId = glGenRenderbuffers();
+        glBindRenderbuffer(GL_RENDERBUFFER, rboId);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, WIDTH, HEIGHT);
+
+        //setup fbo
+        int fboId = glGenFramebuffers();
+        glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texId, 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboId);
+
         // render loop
         var startTime = System.currentTimeMillis();
 
         int sphereTriCount = sphereMesh.triangles.size();
-        int[] sphereSortedIndices = new int[sphereIndexCount]; // 3 * triCount
+        int[] sphereSortedIndices = new int[sphereIndexCount];
         TriDepth[] triDepths = new TriDepth[sphereTriCount];
         for (int ti = 0; ti < sphereTriCount; ti++) {
             triDepths[ti] = new TriDepth(ti, 0f);
         }
 
         while (!GLFW.glfwWindowShouldClose(hWindow)) {
-            // clear screen and z-buffer
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
             // switch to our shader
             glUseProgram(hProgram);
 
-            // B) set per-frame uniforms
+            //render to fbo
+            glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+            glViewport(0, 0, WIDTH, HEIGHT);
+            // clear screen and z-buffer
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // set per-frame uniforms
             Matrix4x4 V = createView();
             Matrix4x4 P = createProj();
             glUniformMatrix4fv(uView, false, V.toArray());
             glUniformMatrix4fv(uProj, false, P.toArray());
 
-            // world-space light and camera position (match the V you used)
             glUniform3f(uLightPos, 0f, 0f, 20.0f);
             glUniform3f(uCameraPos, 0.0f, 0.0f, 10.0f);
             glUniform1f(uAlpha, 1.0f);
@@ -422,7 +507,7 @@ public class OpenGL {
                 if (k % 2 == 0) {
                     glBindTexture(GL_TEXTURE_2D, hTexture1);
                 } else {
-                    glBindTexture(GL_TEXTURE_2D, hTexture4);
+                    glBindTexture(GL_TEXTURE_2D, hTexture3);
                 }
                 Matrix4x4 M = createModel(time, cubePos[k], k * 3.0f, 1.0f);
                 glUniformMatrix4fv(uModel, false, M.toArray());
@@ -439,7 +524,7 @@ public class OpenGL {
 
             // glassy sphere
             glDepthMask(false);
-            glUniform1f(uAlpha, 0.08f);
+            glUniform1f(uAlpha, 0.8f);
             glBindTexture(GL_TEXTURE_2D, hTexture3);
             Matrix4x4 glassM = createModel(time * 0.5f, spherePos, 1.0f, 4.5f);
             glUniformMatrix4fv(uModel, false, glassM.toArray());
@@ -453,6 +538,26 @@ public class OpenGL {
             glUniform1f(uAlpha, 1.0f);
             glDepthMask(true);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboTriangleIndices);
+
+            // render to screen
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, WIDTH, HEIGHT);
+            glDisable(GL_DEPTH_TEST);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glUseProgram(postProgram);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texId);
+            glUniform1i(uScene, 0);
+
+            // set blueish tint + strength
+            glUniform3f(uTint, 0.1f, 0.1f, 1f);
+            glUniform1f(uStrength, 0.8f);
+
+            // draw fullscreen triangle
+            glBindVertexArray(postVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glEnable(GL_DEPTH_TEST);
 
             // display
             GLFW.glfwSwapBuffers(hWindow);
