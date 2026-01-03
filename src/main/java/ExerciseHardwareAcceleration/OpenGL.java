@@ -456,7 +456,6 @@ public class OpenGL {
             glUniform3f(uCameraPos, 0.0f, 0.0f, 10.0f);
             glUniform1f(uAlpha, 1.0f);
 
-            //TODO: setup texture
             int tiuIndex = 1;
             glActiveTexture(GL_TEXTURE0 + tiuIndex);
             glBindTexture(GL_TEXTURE_2D, hTexture1);
